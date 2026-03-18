@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app.connectors.qianxin_news import QianxinNewsConnector
 from app.connectors.qianxin_report import QianxinReportConnector
+from app.connectors.qianxin_update import QianxinUpdateConnector
 from app.domain_plugins.registry import DomainRegistry
 from app.models.records import NormalizedRecord, RawRecord, RunArtifacts
 from app.models.task_spec import TaskSpec
@@ -25,6 +26,7 @@ class TaskService:
         self.writer = SQLiteWriter()
         self.qianxin_news_connector = QianxinNewsConnector()
         self.qianxin_report_connector = QianxinReportConnector()
+        self.qianxin_update_connector = QianxinUpdateConnector()
 
     def validate_task(self, task: TaskSpec) -> dict:
         plugin = self.registry.get(task.domain)
@@ -123,6 +125,8 @@ class TaskService:
                 records.extend(self.qianxin_news_connector.collect(task))
             if not allowed or 'qianxin_report' in allowed:
                 records.extend(self.qianxin_report_connector.collect(task))
+            if not allowed or 'qianxin_update' in allowed:
+                records.extend(self.qianxin_update_connector.collect(task))
             if records:
                 return records
         return [self._build_seed_raw_record(task)]
