@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 
 from app.models.source_profile import SourceProfileValidationError
-from app.sources.registry import SourceRegistry
 from app.models.task_spec import TaskSpec
+from app.sources.registry import SourceRegistry
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +32,11 @@ class SourceRegistryTests(unittest.TestCase):
         })
         selected = [profile.source_id for profile in registry.list_for_task(task)]
         self.assertEqual(selected, ['python_org_jobs_rss'])
+
+    def test_list_profiles_supports_filters(self) -> None:
+        registry = SourceRegistry(ROOT / 'configs' / 'sources')
+        profiles = registry.list_profiles(domain='jobs', channel='rss')
+        self.assertEqual([profile.source_id for profile in profiles], ['python_org_jobs_rss'])
 
     def test_explicit_selection_requires_available_source(self) -> None:
         registry = SourceRegistry(ROOT / 'configs' / 'sources')

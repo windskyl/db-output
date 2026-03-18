@@ -63,3 +63,17 @@ class SourceProfile:
             raise SourceProfileValidationError('regex_html_list profiles require item_pattern')
         if self.connector_kind == 'rss_feed' and self.source_channel != 'rss':
             raise SourceProfileValidationError('rss_feed profiles must use source_channel=rss')
+
+    def to_summary(self) -> dict[str, Any]:
+        return {
+            'source_id': self.source_id,
+            'domain': self.domain,
+            'connector_kind': self.connector_kind,
+            'source_channel': self.source_channel,
+            'source_type': self.source_type,
+            'source_label': self.source_label,
+            'base_url': self.base_url,
+            'first_page_url': self.first_page_url,
+            'max_pages': self.max_pages,
+            'max_items_per_fetch': self.max_items_per_fetch,
+        }

@@ -26,8 +26,17 @@ class SourceRegistry:
     def get(self, source_id: str) -> SourceProfile:
         return self._profiles[source_id]
 
+    def list_profiles(self, domain: str | None = None, channel: str | None = None) -> list[SourceProfile]:
+        profiles = list(self._profiles.values())
+        if domain:
+            profiles = [profile for profile in profiles if profile.domain == domain]
+        if channel:
+            profiles = [profile for profile in profiles if profile.source_channel == channel]
+        profiles.sort(key=lambda profile: (profile.domain, profile.source_id))
+        return profiles
+
     def list_for_task(self, task: TaskSpec) -> list[SourceProfile]:
-        candidates = [profile for profile in self._profiles.values() if profile.domain == task.domain]
+        candidates = self.list_profiles(domain=task.domain)
         blacklist = set(task.source_policy.blacklist)
         if blacklist:
             candidates = [profile for profile in candidates if profile.source_id not in blacklist]

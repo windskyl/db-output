@@ -25,6 +25,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run the local dry-run pipeline for a task JSON file")
     run_parser.add_argument("task_file", help="Path to the task JSON file")
 
+    sources_parser = subparsers.add_parser("sources", help="List configured source profiles or preview task source selection")
+    sources_parser.add_argument("--domain", help="Filter configured source profiles by domain")
+    sources_parser.add_argument("--channel", choices=["html", "rss", "api"], help="Filter configured source profiles by channel")
+    sources_parser.add_argument("--task-file", help="Optional task JSON file used to preview selected sources")
+
     return parser
 
 
@@ -34,11 +39,15 @@ def main(argv: list[str] | None = None) -> int:
     service = TaskService(base_dir=Path(args.base_dir))
 
     try:
-        task = load_task(Path(args.task_file))
-        if args.command == "validate":
-            result = service.validate_task(task)
+        if args.command == "sources":
+            task = load_task(Path(args.task_file)) if args.task_file else None
+            result = service.list_sources(domain=args.domain, channel=args.channel, task=task)
         else:
-            result = service.run_task(task)
+            task = load_task(Path(args.task_file))
+            if args.command == "validate":
+                result = service.validate_task(task)
+            else:
+                result = service.run_task(task)
     except (FileNotFoundError, json.JSONDecodeError, TaskValidationError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

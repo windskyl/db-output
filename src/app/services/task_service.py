@@ -33,13 +33,26 @@ class TaskService:
     def validate_task(self, task: TaskSpec) -> dict:
         plugin = self.registry.get(task.domain)
         plugin.validate_task(task)
-        selected_sources = [profile.source_id for profile in self.source_registry.list_for_task(task)]
+        selected_sources = self.source_registry.list_for_task(task)
         return {
             'ok': True,
             'task': task.to_summary(),
-            'selected_sources': selected_sources,
+            'selected_sources': [profile.source_id for profile in selected_sources],
+            'selected_source_details': [profile.to_summary() for profile in selected_sources],
             'supported_domains': self.registry.names(),
         }
+
+    def list_sources(self, domain: str | None = None, channel: str | None = None, task: TaskSpec | None = None) -> dict:
+        profiles = self.source_registry.list_profiles(domain=domain, channel=channel)
+        result: dict[str, object] = {
+            'total': len(profiles),
+            'sources': [profile.to_summary() for profile in profiles],
+        }
+        if task is not None:
+            selected = self.source_registry.list_for_task(task)
+            result['task'] = task.to_summary()
+            result['selected_sources'] = [profile.to_summary() for profile in selected]
+        return result
 
     def run_task(self, task: TaskSpec) -> dict:
         plugin = self.registry.get(task.domain)
