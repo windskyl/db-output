@@ -26,11 +26,20 @@ class TimeRange:
 class SourcePolicy:
     whitelist: list[str] = field(default_factory=list)
     blacklist: list[str] = field(default_factory=list)
+    selection_mode: str = 'auto'
     prefer_official: bool = False
     allow_rss: bool = True
     allow_api: bool = True
     allow_html: bool = True
     max_sources: int = 10
+
+    def validate(self) -> None:
+        if self.selection_mode not in {'auto', 'explicit'}:
+            raise TaskValidationError('source_policy.selection_mode must be auto or explicit')
+        if self.max_sources < 1:
+            raise TaskValidationError('source_policy.max_sources must be >= 1')
+        if self.selection_mode == 'explicit' and not self.whitelist:
+            raise TaskValidationError('source_policy.whitelist is required when selection_mode=explicit')
 
 
 @dataclass(slots=True)
@@ -130,6 +139,7 @@ class TaskSpec:
         if not self.topic_scope:
             raise TaskValidationError("topic_scope must not be empty")
         self.time_range.validate()
+        self.source_policy.validate()
         self.relevance_policy.validate()
         self.quality_policy.validate()
         self.run_policy.validate()
@@ -146,4 +156,5 @@ class TaskSpec:
                 "end": self.time_range.end,
                 "timezone": self.time_range.timezone,
             },
+            "selection_mode": self.source_policy.selection_mode,
         }

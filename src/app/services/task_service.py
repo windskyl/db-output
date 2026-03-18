@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.connectors.regex_html_list import RegexHtmlListConnector
+from app.connectors.rss_feed import RssFeedConnector
 from app.domain_plugins.registry import DomainRegistry
 from app.models.records import NormalizedRecord, RawRecord, RunArtifacts
 from app.models.task_spec import TaskSpec
@@ -26,6 +27,7 @@ class TaskService:
         self.source_registry = SourceRegistry(config_root=Path(__file__).resolve().parents[3] / 'configs' / 'sources')
         self.connectors = {
             'regex_html_list': RegexHtmlListConnector(),
+            'rss_feed': RssFeedConnector(),
         }
 
     def validate_task(self, task: TaskSpec) -> dict:
@@ -137,13 +139,13 @@ class TaskService:
             source_url = str(payload.get('url', raw.request_url))
             published_at = str(payload.get('published_at', task.time_range.end))
             primary_entity = self._primary_entity(task, payload)
-            source_tag = str(payload.get('tag', ''))
+            source_tag = str(payload.get('tag', payload.get('category', '')))
             record_id = f"{task.task_id}-{raw.source_id}-{index}"
             extra = {
                 'scenario_template': task.scenario_template,
                 'request_url': raw.request_url,
             }
-            for key in ('source_item_id', 'company', 'location', 'category'):
+            for key in ('source_item_id', 'company', 'location', 'category', 'guid'):
                 if key in payload:
                     extra[key] = payload[key]
             normalized.append(

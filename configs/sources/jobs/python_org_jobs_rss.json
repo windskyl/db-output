@@ -1,0 +1,29 @@
+﻿{
+  "source_id": "python_org_jobs_rss",
+  "domain": "jobs",
+  "connector_kind": "rss_feed",
+  "source_type": "public_jobs_rss",
+  "source_label": "Python.org Jobs RSS",
+  "base_url": "https://www.python.org",
+  "first_page_url": "https://www.python.org/jobs/feed/rss/",
+  "source_channel": "rss",
+  "max_pages": 1,
+  "max_items_per_fetch": 50,
+  "item_pattern": "",
+  "item_pattern_flags": [],
+  "field_patterns": {},
+  "field_pattern_flags": [],
+  "clean_fields": ["title", "summary"],
+  "entity_scope": [],
+  "text_match_fields": ["title", "summary", "company", "location"],
+  "pagination_pattern": null,
+  "stop_on_older_items": false,
+  "decode_html_entities": true,
+  "rss_item_fields": {
+    "title": "title",
+    "url": "link",
+    "summary": "description",
+    "guid": "guid",
+    "published_at": "pubDate"
+  }
+}

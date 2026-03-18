@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from app.models.source_profile import SourceProfile
-from app.models.task_spec import TaskSpec
+from app.models.source_profile import SourceProfile, SourceProfileValidationError
+from app.models.task_spec import TaskSpec, TaskValidationError
 
 
 class SourceRegistry:
@@ -16,7 +16,10 @@ class SourceRegistry:
         if not self.config_root.exists():
             return profiles
         for path in sorted(self.config_root.rglob('*.json')):
-            profile = SourceProfile.from_file(path)
+            try:
+                profile = SourceProfile.from_file(path)
+            except SourceProfileValidationError as exc:
+                raise SourceProfileValidationError(f'{path.name}: {exc}') from exc
             profiles[profile.source_id] = profile
         return profiles
 
@@ -25,11 +28,30 @@ class SourceRegistry:
 
     def list_for_task(self, task: TaskSpec) -> list[SourceProfile]:
         candidates = [profile for profile in self._profiles.values() if profile.domain == task.domain]
-        whitelist = set(task.source_policy.whitelist)
         blacklist = set(task.source_policy.blacklist)
-        if whitelist:
-            candidates = [profile for profile in candidates if profile.source_id in whitelist]
         if blacklist:
             candidates = [profile for profile in candidates if profile.source_id not in blacklist]
-        candidates.sort(key=lambda profile: profile.source_id)
+        candidates = [profile for profile in candidates if self._channel_allowed(profile, task)]
+
+        if task.source_policy.selection_mode == 'explicit':
+            whitelist = set(task.source_policy.whitelist)
+            candidates = [profile for profile in candidates if profile.source_id in whitelist]
+            missing = whitelist - {profile.source_id for profile in candidates}
+            if missing:
+                raise TaskValidationError(f'explicit sources unavailable for task: {", ".join(sorted(missing))}')
+            candidates.sort(key=lambda profile: profile.source_id)
+            return candidates[: task.source_policy.max_sources]
+
+        candidates.sort(key=lambda profile: self._sort_key(profile, task))
         return candidates[: task.source_policy.max_sources]
+
+    def _channel_allowed(self, profile: SourceProfile, task: TaskSpec) -> bool:
+        return (
+            (profile.source_channel != 'html' or task.source_policy.allow_html)
+            and (profile.source_channel != 'rss' or task.source_policy.allow_rss)
+            and (profile.source_channel != 'api' or task.source_policy.allow_api)
+        )
+
+    def _sort_key(self, profile: SourceProfile, task: TaskSpec) -> tuple[int, str]:
+        official_priority = 0 if task.source_policy.prefer_official and profile.source_type.startswith('official_') else 1
+        return (official_priority, profile.source_id)
