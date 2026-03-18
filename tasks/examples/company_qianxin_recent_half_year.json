@@ -1,0 +1,55 @@
+﻿{
+  "task_id": "company-qianxin-001",
+  "scenario_template": "company_due_diligence",
+  "domain": "company_intel",
+  "targets": [
+    {
+      "type": "company",
+      "value": "奇安信"
+    }
+  ],
+  "topic_scope": [
+    "company_profile",
+    "product_update",
+    "tech_blog"
+  ],
+  "time_range": {
+    "start": "2025-09-18T00:00:00",
+    "end": "2026-03-18T23:59:59",
+    "timezone": "Asia/Shanghai"
+  },
+  "source_policy": {
+    "whitelist": ["qianxin_news"],
+    "blacklist": [],
+    "prefer_official": true,
+    "allow_rss": false,
+    "allow_api": false,
+    "allow_html": true,
+    "max_sources": 6
+  },
+  "relevance_policy": {
+    "require_target_match": true,
+    "require_topic_match": false,
+    "require_cooccurrence": false,
+    "min_relevance_score": 0.6
+  },
+  "quality_policy": {
+    "required_fields": ["title", "source_url", "published_at"],
+    "dedupe_mode": "strict",
+    "max_missing_ratio": 0.2
+  },
+  "output_policy": {
+    "writer": "sqlite",
+    "keep_raw": true,
+    "keep_normalized": true,
+    "max_output_records": 2000,
+    "update_mode": "replace"
+  },
+  "run_policy": {
+    "max_concurrency": 4,
+    "timeout_seconds": 20,
+    "retry_times": 2,
+    "enable_cache": false,
+    "allow_browser": false
+  }
+}

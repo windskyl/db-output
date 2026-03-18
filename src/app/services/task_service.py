@@ -5,6 +5,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.connectors.qianxin_news import QianxinNewsConnector
 from app.domain_plugins.registry import DomainRegistry
 from app.models.records import NormalizedRecord, RawRecord, RunArtifacts
 from app.models.task_spec import TaskSpec
@@ -21,6 +22,7 @@ class TaskService:
         self.raw_store = RawStore()
         self.normalized_store = NormalizedStore()
         self.writer = SQLiteWriter()
+        self.qianxin_news_connector = QianxinNewsConnector()
 
     def validate_task(self, task: TaskSpec) -> dict:
         plugin = self.registry.get(task.domain)
@@ -38,8 +40,8 @@ class TaskService:
         paths = TaskPaths(base_dir=self.base_dir, domain=task.domain, task_id=task.task_id)
         paths.ensure()
 
-        raw_records = [self._build_seed_raw_record(task)]
-        normalized_records = [self._build_seed_normalized_record(task)]
+        raw_records = self._collect_raw_records(task)
+        normalized_records = self._normalize_records(task, raw_records)
 
         if task.output_policy.keep_raw:
             self.raw_store.write(paths.raw_file, raw_records)
@@ -56,11 +58,9 @@ class TaskService:
             "dropped_by_relevance": 0,
             "dropped_by_quality": 0,
             "missing_field_stats": {},
-            "source_stats": {"seed": len(raw_records)},
+            "source_stats": self._build_source_stats(raw_records),
             "error_stats": {},
-            "warnings": [
-                "This is a skeleton dry-run. Network collection connectors are not implemented yet."
-            ],
+            "warnings": self._build_warnings(task, raw_records),
         }
         run_summary = {
             "task_id": task.task_id,
@@ -113,6 +113,65 @@ class TaskService:
             "quality_report": quality_report,
         }
 
+    def _collect_raw_records(self, task: TaskSpec) -> list[RawRecord]:
+        if task.domain == "company_intel" and self._is_qianxin_task(task):
+            records = self.qianxin_news_connector.collect(task)
+            if records:
+                return records
+        return [self._build_seed_raw_record(task)]
+
+    def _normalize_records(self, task: TaskSpec, raw_records: list[RawRecord]) -> list[NormalizedRecord]:
+        normalized: list[NormalizedRecord] = []
+        for index, raw in enumerate(raw_records, start=1):
+            payload = raw.raw_payload
+            title = str(payload.get("title", "") or f"Seed record for {task.domain}")
+            summary = str(payload.get("summary", ""))
+            source_url = str(payload.get("url", raw.request_url))
+            published_at = str(payload.get("published_at", task.time_range.end))
+            primary_entity = self._primary_entity(task)
+            record_id = f"{task.task_id}-{index}"
+            normalized.append(
+                NormalizedRecord(
+                    task_id=task.task_id,
+                    domain=task.domain,
+                    record_id=record_id,
+                    dedupe_key=f"{raw.source_id}:{published_at}:{title}",
+                    source_id=raw.source_id,
+                    source_url=source_url,
+                    published_at=published_at,
+                    collected_at=raw.fetched_at,
+                    primary_entity=primary_entity,
+                    entity_tags=[primary_entity],
+                    topic_tags=list(task.topic_scope),
+                    title=title,
+                    content_text=summary or "Generated from the validated task spec so the pipeline can be tested locally.",
+                    relevance_score=max(task.relevance_policy.min_relevance_score, 0.7),
+                    extra={
+                        "scenario_template": task.scenario_template,
+                        "request_url": raw.request_url,
+                    },
+                )
+            )
+        return normalized
+
+    def _build_source_stats(self, raw_records: list[RawRecord]) -> dict[str, int]:
+        stats: dict[str, int] = {}
+        for record in raw_records:
+            stats[record.source_id] = stats.get(record.source_id, 0) + 1
+        return stats
+
+    def _build_warnings(self, task: TaskSpec, raw_records: list[RawRecord]) -> list[str]:
+        if task.domain == "company_intel" and self._is_qianxin_task(task) and raw_records and raw_records[0].source_id != "seed":
+            return []
+        return ["This run used the local seed fallback because no live connector matched the task."]
+
+    def _is_qianxin_task(self, task: TaskSpec) -> bool:
+        return any("奇安信" in str(target.get("value", "")) for target in task.targets)
+
+    def _primary_entity(self, task: TaskSpec) -> str:
+        primary_target = task.targets[0].get("value") or task.targets[0].get("type") or "unknown"
+        return str(primary_target)
+
     def _build_seed_raw_record(self, task: TaskSpec) -> RawRecord:
         seed_payload = {
             "task": task.to_summary(),
@@ -129,30 +188,4 @@ class TaskService:
             http_status=200,
             content_hash=hashlib.sha256(seed_json.encode("utf-8")).hexdigest(),
             raw_payload=seed_payload,
-        )
-
-    def _build_seed_normalized_record(self, task: TaskSpec) -> NormalizedRecord:
-        now = datetime.now(UTC).isoformat()
-        primary_target = task.targets[0].get("value") or task.targets[0].get("type") or "unknown"
-        record_id = f"{task.task_id}-seed"
-        return NormalizedRecord(
-            task_id=task.task_id,
-            domain=task.domain,
-            record_id=record_id,
-            dedupe_key=record_id,
-            source_id="seed",
-            source_url="local://task-seed",
-            published_at=task.time_range.end,
-            collected_at=now,
-            primary_entity=str(primary_target),
-            entity_tags=[str(primary_target)],
-            topic_tags=list(task.topic_scope),
-            title=f"Seed record for {task.domain}",
-            content_text="Generated from the validated task spec so the pipeline can be tested locally.",
-            relevance_score=max(task.relevance_policy.min_relevance_score, 0.7),
-            extra={
-                "scenario_template": task.scenario_template,
-                "generated_at": now,
-                "target_count": len(task.targets),
-            },
         )
