@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.connectors.qianxin_news import QianxinNewsConnector
+from app.connectors.qianxin_report import QianxinReportConnector
 from app.domain_plugins.registry import DomainRegistry
 from app.models.records import NormalizedRecord, RawRecord, RunArtifacts
 from app.models.task_spec import TaskSpec
@@ -23,6 +24,7 @@ class TaskService:
         self.normalized_store = NormalizedStore()
         self.writer = SQLiteWriter()
         self.qianxin_news_connector = QianxinNewsConnector()
+        self.qianxin_report_connector = QianxinReportConnector()
 
     def validate_task(self, task: TaskSpec) -> dict:
         plugin = self.registry.get(task.domain)
@@ -115,7 +117,12 @@ class TaskService:
 
     def _collect_raw_records(self, task: TaskSpec) -> list[RawRecord]:
         if task.domain == "company_intel" and self._is_qianxin_task(task):
-            records = self.qianxin_news_connector.collect(task)
+            records: list[RawRecord] = []
+            allowed = set(task.source_policy.whitelist)
+            if not allowed or 'qianxin_news' in allowed:
+                records.extend(self.qianxin_news_connector.collect(task))
+            if not allowed or 'qianxin_report' in allowed:
+                records.extend(self.qianxin_report_connector.collect(task))
             if records:
                 return records
         return [self._build_seed_raw_record(task)]
@@ -129,7 +136,15 @@ class TaskService:
             source_url = str(payload.get("url", raw.request_url))
             published_at = str(payload.get("published_at", task.time_range.end))
             primary_entity = self._primary_entity(task)
-            record_id = f"{task.task_id}-{index}"
+            record_id = f"{task.task_id}-{raw.source_id}-{index}"
+            extra = {
+                "scenario_template": task.scenario_template,
+                "request_url": raw.request_url,
+            }
+            if "tag" in payload:
+                extra["tag"] = payload["tag"]
+            if "source_item_id" in payload:
+                extra["source_item_id"] = payload["source_item_id"]
             normalized.append(
                 NormalizedRecord(
                     task_id=task.task_id,
@@ -146,10 +161,7 @@ class TaskService:
                     title=title,
                     content_text=summary or "Generated from the validated task spec so the pipeline can be tested locally.",
                     relevance_score=max(task.relevance_policy.min_relevance_score, 0.7),
-                    extra={
-                        "scenario_template": task.scenario_template,
-                        "request_url": raw.request_url,
-                    },
+                    extra=extra,
                 )
             )
         return normalized

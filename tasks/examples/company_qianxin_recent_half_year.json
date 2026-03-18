@@ -19,7 +19,7 @@
     "timezone": "Asia/Shanghai"
   },
   "source_policy": {
-    "whitelist": ["qianxin_news"],
+    "whitelist": ["qianxin_news", "qianxin_report"],
     "blacklist": [],
     "prefer_official": true,
     "allow_rss": false,
