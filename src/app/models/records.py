@@ -10,6 +10,8 @@ class RawRecord:
     task_id: str
     domain: str
     source_id: str
+    source_type: str
+    source_label: str
     fetched_at: str
     request_url: str
     http_status: int
@@ -27,6 +29,9 @@ class NormalizedRecord:
     record_id: str
     dedupe_key: str
     source_id: str
+    source_type: str
+    source_label: str
+    source_tag: str
     source_url: str
     published_at: str
     collected_at: str

@@ -1,1 +1,1 @@
-﻿"""Connectors package."""
+﻿"""Generic connectors."""

@@ -1,0 +1,29 @@
+﻿{
+  "source_id": "python_org_jobs",
+  "domain": "jobs",
+  "connector_kind": "regex_html_list",
+  "source_type": "public_jobs_board",
+  "source_label": "Python.org Jobs",
+  "base_url": "https://www.python.org",
+  "first_page_url": "https://www.python.org/jobs/",
+  "paged_url_template": "https://www.python.org/jobs/?page={page}",
+  "max_pages": 1,
+  "item_pattern": "<li>\\s*<h2 class=\"listing-company\">(?P<body>.*?)</li>",
+  "item_pattern_flags": ["DOTALL"],
+  "field_patterns": {
+    "url": "<a href=\"(?P<value>/jobs/\\d+/)\">",
+    "title": "<a href=\"/jobs/\\d+/\">(?P<value>.*?)</a>",
+    "company": "<a href=\"/jobs/\\d+/\">.*?</a><br/>\\s*(?P<value>.*?)\\s*</span>",
+    "location": "<span class=\"listing-location\"><a [^>]*>(?P<value>.*?)</a></span>",
+    "summary": "<span class=\"listing-job-type\">(?P<value>.*?)</span>",
+    "category": "<span class=\"listing-company-category\"><a [^>]*>(?P<value>.*?)</a></span>",
+    "published_at": "<time datetime=\"(?P<value>[^\"]+)\">"
+  },
+  "field_pattern_flags": ["DOTALL"],
+  "clean_fields": ["title", "company", "location", "summary", "category"],
+  "entity_scope": [],
+  "text_match_fields": ["title", "company", "location", "summary", "category"],
+  "pagination_pattern": null,
+  "stop_on_older_items": false,
+  "decode_html_entities": true
+}

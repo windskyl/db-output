@@ -1,0 +1,28 @@
+﻿{
+  "source_id": "qianxin_news",
+  "domain": "company_intel",
+  "connector_kind": "regex_html_list",
+  "source_type": "official_company_news",
+  "source_label": "Qianxin News",
+  "base_url": "https://www.qianxin.com",
+  "first_page_url": "https://www.qianxin.com/news/list",
+  "paged_url_template": "https://www.qianxin.com/news/list?page={page}",
+  "max_pages": 8,
+  "item_pattern": "<li class=\"lists statistics-js\" data-id=\"(?P<source_item_id>\\d+)\">(?P<body>.*?)</li>",
+  "item_pattern_flags": ["DOTALL"],
+  "field_patterns": {
+    "url": "<h3 class=\"subtitle\">.*?<a href=\"(?P<value>[^\"]+)\">",
+    "title": "<h3 class=\"subtitle\">.*?<a href=\"[^\"]+\">\\s*(?P<value>.*?)\\s*</a>",
+    "summary": "<p class=\"news-content\">.*?<a [^>]*>\\s*(?P<value>.*?)\\s*</a>",
+    "published_year": "<div class=\"news-date\">.*?<span class=\"year\">(?P<value>\\d{4})</span>",
+    "published_month": "<div class=\"news-date\">.*?<span class=\"year\">\\d{4}</span>.*?<span class=\"month\">(?P<value>\\d{2})</span>",
+    "published_day": "<div class=\"news-date\">.*?<span class=\"year\">\\d{4}</span>.*?<span class=\"month\">\\d{2}</span>.*?<span class=\"day\">(?P<value>\\d{2})</span>"
+  },
+  "field_pattern_flags": ["DOTALL"],
+  "clean_fields": ["title", "summary"],
+  "entity_scope": ["奇安信"],
+  "text_match_fields": ["title", "summary"],
+  "pagination_pattern": "/news/list\\?page=(\\d+)",
+  "stop_on_older_items": true,
+  "decode_html_entities": true
+}

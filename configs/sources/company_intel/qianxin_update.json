@@ -1,0 +1,21 @@
+﻿{
+  "source_id": "qianxin_update",
+  "domain": "company_intel",
+  "connector_kind": "regex_html_list",
+  "source_type": "official_company_update",
+  "source_label": "Qianxin Product Updates",
+  "base_url": "https://www.qianxin.com",
+  "first_page_url": "https://www.qianxin.com/support/update",
+  "paged_url_template": "https://www.qianxin.com/support/update?page={page}",
+  "max_pages": 8,
+  "item_pattern": "<li class=\"product-announcement__item\">.*?<span class=\"product-announcement__col order\">(?P<source_item_id>\\d+)</span>.*?<span class=\"product-announcement__col title\">\\s*<a href=\"(?P<url>[^\"]+)\"[^>]*>(?P<title>.*?)</a>\\s*</span>.*?<span class=\"product-announcement__col tag\">\\s*<a [^>]*>(?P<tag>.*?)</a>\\s*</span>.*?<span class=\"product-announcement__col date\">(?P<published_at>\\d{4}-\\d{2}-\\d{2})</span>",
+  "item_pattern_flags": ["DOTALL"],
+  "field_patterns": {},
+  "field_pattern_flags": ["DOTALL"],
+  "clean_fields": ["title", "tag"],
+  "entity_scope": ["奇安信"],
+  "text_match_fields": ["title", "tag"],
+  "pagination_pattern": "/support/update\\?page=(\\d+)",
+  "stop_on_older_items": true,
+  "decode_html_entities": true
+}

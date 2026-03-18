@@ -1,0 +1,21 @@
+﻿{
+  "source_id": "qianxin_report",
+  "domain": "company_intel",
+  "connector_kind": "regex_html_list",
+  "source_type": "official_company_report",
+  "source_label": "Qianxin Reports",
+  "base_url": "https://www.qianxin.com",
+  "first_page_url": "https://www.qianxin.com/report/index",
+  "paged_url_template": "https://www.qianxin.com/report/index?page={page}",
+  "max_pages": 8,
+  "item_pattern": "<li class=\"report-list-item\">.*?<a href=\"(?P<url>/report/detail/rid/(?P<source_item_id>\\d+))\">.*?<span\\s+class=\"report-list-item-time\">(?P<published_year>\\d{4})年(?P<published_month>\\d{1,2})月(?P<published_day>\\d{1,2})日</span>.*?<span\\s+class=\"report-list-item-tag\">(?P<tag>.*?)</span>.*?<span\\s+class=\"report-list-item-hd\">(?P<title>.*?)</span>.*?<p class=\"report-list-item-info\">\\s*(?P<summary>.*?)\\s*</p>",
+  "item_pattern_flags": ["DOTALL"],
+  "field_patterns": {},
+  "field_pattern_flags": ["DOTALL"],
+  "clean_fields": ["title", "summary", "tag"],
+  "entity_scope": ["奇安信"],
+  "text_match_fields": ["title", "summary", "tag"],
+  "pagination_pattern": "/report/index\\?page=(\\d+)",
+  "stop_on_older_items": true,
+  "decode_html_entities": true
+}

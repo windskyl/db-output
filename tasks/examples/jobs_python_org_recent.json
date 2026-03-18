@@ -1,0 +1,51 @@
+﻿{
+  "task_id": "job-python-org-001",
+  "scenario_template": "job_hunt_engineering_basic",
+  "domain": "jobs",
+  "targets": [
+    {
+      "type": "keyword",
+      "value": "Python"
+    }
+  ],
+  "topic_scope": ["backend"],
+  "time_range": {
+    "start": "2026-02-01T00:00:00",
+    "end": "2026-03-18T23:59:59",
+    "timezone": "UTC"
+  },
+  "source_policy": {
+    "whitelist": ["python_org_jobs"],
+    "blacklist": [],
+    "prefer_official": false,
+    "allow_rss": false,
+    "allow_api": false,
+    "allow_html": true,
+    "max_sources": 3
+  },
+  "relevance_policy": {
+    "require_target_match": true,
+    "require_topic_match": false,
+    "require_cooccurrence": false,
+    "min_relevance_score": 0.6
+  },
+  "quality_policy": {
+    "required_fields": ["title", "source_url", "published_at"],
+    "dedupe_mode": "strict",
+    "max_missing_ratio": 0.2
+  },
+  "output_policy": {
+    "writer": "sqlite",
+    "keep_raw": true,
+    "keep_normalized": true,
+    "max_output_records": 1000,
+    "update_mode": "replace"
+  },
+  "run_policy": {
+    "max_concurrency": 4,
+    "timeout_seconds": 20,
+    "retry_times": 2,
+    "enable_cache": false,
+    "allow_browser": false
+  }
+}
