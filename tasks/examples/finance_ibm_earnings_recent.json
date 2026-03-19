@@ -1,0 +1,52 @@
+﻿{
+  "task_id": "finance-ibm-earnings-001",
+  "scenario_template": "investment_financial_report_basic",
+  "domain": "finance",
+  "targets": [
+    {
+      "type": "ticker",
+      "value": "IBM"
+    }
+  ],
+  "topic_scope": ["financial_report"],
+  "time_range": {
+    "start": "2023-01-01T00:00:00",
+    "end": "2026-03-19T23:59:59",
+    "timezone": "UTC"
+  },
+  "source_policy": {
+    "selection_mode": "explicit",
+    "whitelist": ["alpha_vantage_demo_earnings"],
+    "blacklist": [],
+    "prefer_official": false,
+    "allow_rss": false,
+    "allow_api": true,
+    "allow_html": false,
+    "max_sources": 1
+  },
+  "relevance_policy": {
+    "require_target_match": true,
+    "require_topic_match": true,
+    "require_cooccurrence": false,
+    "min_relevance_score": 0.6
+  },
+  "quality_policy": {
+    "required_fields": ["title", "source_url", "published_at"],
+    "dedupe_mode": "strict",
+    "max_missing_ratio": 0.2
+  },
+  "output_policy": {
+    "writer": "sqlite",
+    "keep_raw": true,
+    "keep_normalized": true,
+    "max_output_records": 1000,
+    "update_mode": "replace"
+  },
+  "run_policy": {
+    "max_concurrency": 2,
+    "timeout_seconds": 20,
+    "retry_times": 1,
+    "enable_cache": false,
+    "allow_browser": false
+  }
+}

@@ -249,6 +249,13 @@ class TaskService:
             for key in ("source_item_id", "company", "location", "category", "guid", "author"):
                 if key in payload:
                     extra[key] = payload[key]
+            if task.domain == "finance":
+                for key, value in payload.items():
+                    if key in {"title", "summary", "published_at", "url", "tag", "category"}:
+                        continue
+                    if value is None or isinstance(value, (dict, list)):
+                        continue
+                    extra[key] = value
             normalized.append(
                 NormalizedRecord(
                     task_id=task.task_id,
@@ -290,6 +297,8 @@ class TaskService:
     def _primary_entity(self, task: TaskSpec, payload: dict) -> str:
         if task.domain == "jobs" and payload.get("company"):
             return str(payload["company"])
+        if task.domain == "finance" and payload.get("symbol"):
+            return str(payload["symbol"])
         primary_target = task.targets[0].get("value") or task.targets[0].get("type") or "unknown"
         return str(primary_target)
 

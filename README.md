@@ -1,4 +1,4 @@
-# db-output
+﻿# db-output
 
 A local-first, rule-driven data collection project for investment and job-hunting workflows.
 
@@ -81,6 +81,12 @@ Run a public sentiment API task:
 db-output run tasks/examples/public_sentiment_openai_tech_recent.json
 ```
 
+Run a finance earnings task:
+
+```powershell
+db-output run tasks/examples/finance_ibm_earnings_recent.json
+```
+
 List completed local task runs:
 
 ```powershell
@@ -100,5 +106,7 @@ db-output report job-python-org-rss-001 --kind all
 ```
 
 `db-output logs <task_id>` is available as an alias of `report`.
+
+A captured end-to-end finance chain test record is stored in `finance_chain_test_result.md` after the live validation step.
 
 Outputs are written under `data/` by default.

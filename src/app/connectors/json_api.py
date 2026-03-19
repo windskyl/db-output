@@ -42,7 +42,7 @@ class JsonApiConnector:
         for item in items[: profile.max_items_per_fetch]:
             if not isinstance(item, dict):
                 continue
-            parsed = self._parse_item(profile, item)
+            parsed = self._parse_item(profile, item, root_payload=payload)
             if not parsed:
                 continue
             published_at = parsed.get("published_at", "")
@@ -101,10 +101,10 @@ class JsonApiConnector:
                 return None
         return value
 
-    def _parse_item(self, profile: SourceProfile, item: dict[str, Any]) -> dict[str, str]:
+    def _parse_item(self, profile: SourceProfile, item: dict[str, Any], root_payload: Any | None = None) -> dict[str, str]:
         parsed: dict[str, str] = {}
         for target_field, source_path in profile.json_field_paths.items():
-            value = self._extract_field_value(item, source_path)
+            value = self._extract_field_value(item, source_path, root_payload=root_payload)
             if value in (None, "", [], {}):
                 continue
             if isinstance(value, list):
@@ -126,12 +126,17 @@ class JsonApiConnector:
                 parsed[field] = self._clean_text(parsed[field])
         return parsed
 
-    def _extract_field_value(self, item: dict[str, Any], path_expression: str) -> Any:
+    def _extract_field_value(self, item: dict[str, Any], path_expression: str, root_payload: Any | None = None) -> Any:
         for candidate in path_expression.split("|"):
             candidate = candidate.strip()
             if not candidate:
                 continue
-            value = self._extract_items(item, candidate)
+            if candidate.startswith("literal:"):
+                return candidate.removeprefix("literal:")
+            if candidate.startswith("$root.") and root_payload is not None:
+                value = self._extract_items(root_payload, candidate.removeprefix("$root."))
+            else:
+                value = self._extract_items(item, candidate)
             if value not in (None, "", [], {}):
                 return value
         return None

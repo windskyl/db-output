@@ -49,6 +49,40 @@ class JsonApiConnectorTests(unittest.TestCase):
         self.assertIn('OpenAI releases new API model', parsed['title'])
         self.assertIn('SDK rollout', parsed['summary'])
 
+    def test_parse_json_item_supports_root_and_literal_fields(self) -> None:
+        profile = SourceProfile(
+            source_id='alpha_vantage_demo_earnings',
+            domain='finance',
+            connector_kind='json_api',
+            source_type='public_finance_api',
+            source_label='Alpha Vantage Demo Earnings',
+            base_url='https://www.alphavantage.co',
+            first_page_url='https://www.alphavantage.co/query',
+            source_channel='api',
+            max_items_per_fetch=12,
+            json_items_path='quarterlyEarnings',
+            json_field_paths={
+                'title': 'literal:Quarterly Earnings',
+                'symbol': '$root.symbol',
+                'published_at': 'reportedDate|fiscalDateEnding',
+                'metric_value': 'reportedEPS',
+            },
+        )
+        payload = {
+            'symbol': 'IBM',
+            'quarterlyEarnings': [
+                {
+                    'reportedDate': '2026-01-29',
+                    'reportedEPS': '3.92',
+                }
+            ],
+        }
+        parsed = JsonApiConnector()._parse_item(profile, payload['quarterlyEarnings'][0], root_payload=payload)
+        self.assertEqual(parsed['title'], 'Quarterly Earnings')
+        self.assertEqual(parsed['symbol'], 'IBM')
+        self.assertEqual(parsed['published_at'], '2026-01-29')
+        self.assertEqual(parsed['metric_value'], '3.92')
+
     def test_request_context_uses_topic_terms(self) -> None:
         profile = SourceProfile(
             source_id='hn_algolia_company_story_search',

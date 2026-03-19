@@ -1,0 +1,66 @@
+﻿{
+  "source_id": "alpha_vantage_demo_earnings",
+  "domain": "finance",
+  "connector_kind": "json_api",
+  "source_type": "public_finance_api",
+  "source_label": "Alpha Vantage Demo Earnings",
+  "base_url": "https://www.alphavantage.co",
+  "first_page_url": "https://www.alphavantage.co/query",
+  "source_channel": "api",
+  "max_pages": 1,
+  "max_items_per_fetch": 12,
+  "item_pattern": "",
+  "item_pattern_flags": [],
+  "field_patterns": {},
+  "field_pattern_flags": [],
+  "clean_fields": ["title", "summary"],
+  "entity_scope": [],
+  "text_match_fields": ["title", "summary", "symbol", "metric_name", "report_time", "fiscal_date_ending"],
+  "pagination_pattern": null,
+  "stop_on_older_items": false,
+  "decode_html_entities": true,
+  "rss_item_fields": {},
+  "request_headers": {
+    "Accept": "application/json"
+  },
+  "request_query_params": {
+    "function": "EARNINGS",
+    "symbol": "{target}",
+    "apikey": "demo"
+  },
+  "json_items_path": "quarterlyEarnings",
+  "json_field_paths": {
+    "source_item_id": "reportedDate|fiscalDateEnding",
+    "title": "literal:Quarterly Earnings",
+    "summary": "reportedEPS",
+    "published_at": "reportedDate|fiscalDateEnding",
+    "symbol": "$root.symbol",
+    "category": "literal:quarterly_earnings",
+    "metric_name": "literal:reported_eps",
+    "metric_value": "reportedEPS",
+    "estimated_eps": "estimatedEPS",
+    "surprise": "surprise",
+    "surprise_percentage": "surprisePercentage",
+    "report_time": "reportTime",
+    "reported_date": "reportedDate",
+    "fiscal_date_ending": "fiscalDateEnding"
+  },
+  "topic_terms": {
+    "financial_report": ["earnings", "eps", "quarterly"],
+    "company_announcement": ["report", "announcement", "earnings call"],
+    "investment_news": ["guidance", "analyst", "forecast"],
+    "market_quote": ["price", "quote", "market"]
+  },
+  "rate_limit_qps": 0.5,
+  "rate_limit_burst": 1,
+  "max_concurrency": 1,
+  "timeout_seconds": 20,
+  "retry_policy": {
+    "max_attempts": 2,
+    "base_delay_seconds": 1.0,
+    "backoff_multiplier": 2.0,
+    "max_delay_seconds": 4.0,
+    "jitter_ratio": 0.1,
+    "retry_on_status_codes": [429, 500, 502, 503, 504]
+  }
+}
