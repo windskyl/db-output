@@ -113,6 +113,18 @@ class SQLiteWriter:
             "jobs": f"CREATE TABLE IF NOT EXISTS core_jobs_postings ({common_columns});",
             "finance": (
                 f"CREATE TABLE IF NOT EXISTS core_finance_events ({common_columns});"
+                "CREATE TABLE IF NOT EXISTS core_finance_instruments ("
+                "instrument_id TEXT PRIMARY KEY,"
+                "primary_entity TEXT NOT NULL,"
+                "symbol TEXT NOT NULL,"
+                "instrument_name TEXT,"
+                "market TEXT,"
+                "currency TEXT,"
+                "source_id TEXT NOT NULL,"
+                "source_label TEXT NOT NULL,"
+                "last_seen_at TEXT NOT NULL,"
+                "extra_json TEXT NOT NULL"
+                ");"
                 "CREATE TABLE IF NOT EXISTS core_finance_metrics ("
                 "metric_record_id TEXT PRIMARY KEY,"
                 "record_id TEXT NOT NULL,"
@@ -198,7 +210,42 @@ class SQLiteWriter:
             ],
         )
         if domain == "finance":
+            self._insert_finance_instruments(connection, records)
             self._insert_finance_metrics(connection, records)
+
+    def _insert_finance_instruments(self, connection: sqlite3.Connection, records: list[NormalizedRecord]) -> None:
+        instrument_rows: dict[str, tuple] = {}
+        for record in records:
+            symbol = str(record.extra.get("symbol", "") or "").strip()
+            if not symbol:
+                continue
+            instrument_name = str(record.extra.get("instrument_name", "") or record.extra.get("company_name", "") or record.primary_entity)
+            market = str(record.extra.get("market", "") or "")
+            currency = str(record.extra.get("currency", "") or "")
+            instrument_id = symbol.upper()
+            instrument_rows[instrument_id] = (
+                instrument_id,
+                record.primary_entity,
+                symbol,
+                instrument_name,
+                market,
+                currency,
+                record.source_id,
+                record.source_label,
+                record.published_at,
+                json.dumps(record.extra, ensure_ascii=False),
+            )
+        if not instrument_rows:
+            return
+        connection.executemany(
+            """
+            INSERT OR REPLACE INTO core_finance_instruments (
+                instrument_id, primary_entity, symbol, instrument_name, market, currency,
+                source_id, source_label, last_seen_at, extra_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            list(instrument_rows.values()),
+        )
 
     def _insert_finance_metrics(self, connection: sqlite3.Connection, records: list[NormalizedRecord]) -> None:
         metric_rows = []

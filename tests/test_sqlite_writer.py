@@ -11,7 +11,7 @@ from app.writers.sqlite_writer import SQLiteWriter
 
 
 class SQLiteWriterTests(unittest.TestCase):
-    def test_finance_records_are_written_to_metrics_table(self) -> None:
+    def test_finance_records_are_written_to_metrics_and_instruments_tables(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
             artifacts = RunArtifacts(
@@ -50,6 +50,8 @@ class SQLiteWriterTests(unittest.TestCase):
                     'reported_date': '2026-01-29',
                     'fiscal_date_ending': '2025-12-31',
                     'symbol': 'IBM',
+                    'market': 'NYSE',
+                    'currency': 'USD',
                 },
             )
             run_summary = {
@@ -71,6 +73,9 @@ class SQLiteWriterTests(unittest.TestCase):
                 metric_row = connection.execute(
                     'SELECT record_id, primary_entity, metric_name, metric_value, source_id, extra_json FROM core_finance_metrics'
                 ).fetchone()
+                instrument_row = connection.execute(
+                    'SELECT instrument_id, primary_entity, symbol, instrument_name, market, currency, source_id FROM core_finance_instruments'
+                ).fetchone()
             finally:
                 connection.close()
 
@@ -81,6 +86,14 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(metric_row[3], '3.92')
             self.assertEqual(metric_row[4], 'alpha_vantage_demo_earnings')
             self.assertEqual(json.loads(metric_row[5])['estimated_eps'], '3.75')
+
+            self.assertEqual(instrument_row[0], 'IBM')
+            self.assertEqual(instrument_row[1], 'IBM')
+            self.assertEqual(instrument_row[2], 'IBM')
+            self.assertEqual(instrument_row[3], 'IBM')
+            self.assertEqual(instrument_row[4], 'NYSE')
+            self.assertEqual(instrument_row[5], 'USD')
+            self.assertEqual(instrument_row[6], 'alpha_vantage_demo_earnings')
 
 
 if __name__ == '__main__':
