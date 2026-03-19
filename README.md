@@ -1,37 +1,37 @@
 ﻿# db-output
 
-A local-first, rule-driven data collection project for investment and job-hunting workflows.
+一个本地优先、规则驱动的数据采集项目，用于投资和求职场景下的数据收集、清洗与结果落库。
 
-## Current scope
+## 当前范围
 
-This repository currently contains:
+当前仓库包含：
 
-- the requirements document
-- the implementation plan
-- a runnable Python project skeleton
-- a local CLI for task validation and execution
-- a source catalog CLI for inspecting configured source websites
-- a task run inspection CLI for completed local artifacts
-- three-layer persistence for `raw`, `normalized`, and `artifacts`
-- a SQLite writer for verification-friendly outputs
-- configuration-driven source profiles under `configs/sources/`
-- generic HTML, RSS, and JSON API connectors instead of hardcoded site-specific core connectors
-- shared topic and target relevance matching used by all current connector types
+- 需求文档
+- 实现方案文档
+- 可运行的 Python 项目骨架
+- 本地 CLI，用于任务校验与执行
+- 来源目录检查 CLI，用于查看已配置的数据源网站
+- 任务运行检查 CLI，用于查看本地产物与运行状态
+- `raw`、`normalized`、`artifacts` 三层存储
+- 便于校验的 SQLite 输出
+- 位于 `configs/sources/` 下的配置化来源定义
+- 通用 `HTML`、`RSS`、`JSON API` 连接器，而不是在核心代码里硬编码站点
+- 所有现有连接器共享的 target/topic 相关性匹配逻辑
 
-## Architecture note
+## 架构说明
 
-The core code does not hardcode specific target companies anymore.
+当前核心代码不再硬编码具体公司或网站。
 
-- Task JSON describes the domain, targets, time range, and source policy
-- `src/app/sources/registry.py` loads source website definitions from `configs/sources/<domain>/*.json`
-- `src/app/services/task_service.py` asks the registry for matching source profiles
-- Generic connectors in `src/app/connectors/` execute the selected profiles
-- Topic restriction is driven by `task.topic_scope` plus optional `topic_terms` in each source profile
-- Switching to another site of the same structure should require a new source profile, not a new core connector
+- 任务 JSON 描述领域、目标、时间范围和来源策略
+- `src/app/sources/registry.py` 从 `configs/sources/<domain>/*.json` 载入来源定义
+- `src/app/services/task_service.py` 根据任务选择匹配的来源配置
+- `src/app/connectors/` 里的通用连接器执行对应来源
+- topic 限制由 `task.topic_scope` 和来源配置里的 `topic_terms` 共同驱动
+- 如果后续切换到同结构的新站点，原则上只需要新增来源配置，而不是重写核心连接器
 
-This means version `v0.1` uses a manually maintained source catalog. The business layer triggers source selection; connectors only execute the chosen source profiles.
+这意味着当前 `v0.1` 采用“手工维护来源目录 + 通用连接器执行”的方式。业务层决定选哪些源，连接器只负责执行。
 
-## Quick start
+## 快速开始
 
 ```powershell
 python -m venv .venv
@@ -39,74 +39,74 @@ python -m venv .venv
 pip install -e .
 ```
 
-Validate a task:
+校验任务：
 
 ```powershell
 db-output validate tasks/examples/company_qianxin_recent_half_year.json
 ```
 
-Inspect configured source profiles:
+查看已配置来源：
 
 ```powershell
 db-output sources --domain jobs
 ```
 
-Preview which configured sources a task will use:
+预览某个任务会选中哪些来源：
 
 ```powershell
 db-output sources --task-file tasks/examples/jobs_python_org_rss_recent.json
 ```
 
-Run a company intelligence task:
+运行 company_intel 任务：
 
 ```powershell
 db-output run tasks/examples/company_qianxin_recent_half_year.json
 ```
 
-Run a jobs task:
+运行 jobs HTML 任务：
 
 ```powershell
 db-output run tasks/examples/jobs_python_org_recent.json
 ```
 
-Run a jobs RSS task:
+运行 jobs RSS 任务：
 
 ```powershell
 db-output run tasks/examples/jobs_python_org_rss_recent.json
 ```
 
-Run a public sentiment API task:
+运行 public_sentiment API 任务：
 
 ```powershell
 db-output run tasks/examples/public_sentiment_openai_tech_recent.json
 ```
 
-Run a finance earnings task:
+运行 finance 财报任务：
 
 ```powershell
 db-output run tasks/examples/finance_ibm_earnings_recent.json
 ```
 
-List completed local task runs:
+查看本地已完成任务：
 
 ```powershell
 db-output tasks --domain jobs
 ```
 
-Show stored status, counts, and artifact paths for a task:
+查看某个任务的状态、计数和产物路径：
 
 ```powershell
 db-output status job-python-org-rss-001
 ```
 
-Open the stored run and quality reports for a task:
+查看某个任务保存下来的运行报告和质量报告：
 
 ```powershell
 db-output report job-python-org-rss-001 --kind all
 ```
 
-`db-output logs <task_id>` is available as an alias of `report`.
+`db-output logs <task_id>` 是 `report` 的别名。
 
-A captured end-to-end finance chain test record is stored in `finance_chain_test_result.md` after the live validation step.
+测试链路产生的临时结果说明文件只保留在本地，不纳入版本控制。
 
-Outputs are written under `data/` by default.
+默认输出目录是 `data/`。

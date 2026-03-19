@@ -111,7 +111,22 @@ class SQLiteWriter:
         """
         statements = {
             "jobs": f"CREATE TABLE IF NOT EXISTS core_jobs_postings ({common_columns});",
-            "finance": f"CREATE TABLE IF NOT EXISTS core_finance_events ({common_columns});",
+            "finance": (
+                f"CREATE TABLE IF NOT EXISTS core_finance_events ({common_columns});"
+                "CREATE TABLE IF NOT EXISTS core_finance_metrics ("
+                "metric_record_id TEXT PRIMARY KEY,"
+                "record_id TEXT NOT NULL,"
+                "primary_entity TEXT NOT NULL,"
+                "metric_name TEXT NOT NULL,"
+                "metric_value TEXT NOT NULL,"
+                "metric_unit TEXT,"
+                "currency TEXT,"
+                "published_at TEXT NOT NULL,"
+                "source_id TEXT NOT NULL,"
+                "source_url TEXT NOT NULL,"
+                "extra_json TEXT NOT NULL"
+                ");"
+            ),
             "company_intel": f"CREATE TABLE IF NOT EXISTS core_company_events ({common_columns});",
             "public_sentiment": f"CREATE TABLE IF NOT EXISTS core_sentiment_posts ({common_columns}, content_text TEXT NOT NULL);",
         }
@@ -182,4 +197,39 @@ class SQLiteWriter:
                 for r in records
             ],
         )
+        if domain == "finance":
+            self._insert_finance_metrics(connection, records)
 
+    def _insert_finance_metrics(self, connection: sqlite3.Connection, records: list[NormalizedRecord]) -> None:
+        metric_rows = []
+        for record in records:
+            metric_name = str(record.extra.get("metric_name", "")).strip()
+            metric_value = str(record.extra.get("metric_value", "")).strip()
+            if not metric_name or not metric_value:
+                continue
+            metric_rows.append(
+                (
+                    f"{record.record_id}:{metric_name}",
+                    record.record_id,
+                    record.primary_entity,
+                    metric_name,
+                    metric_value,
+                    str(record.extra.get("metric_unit", "") or ""),
+                    str(record.extra.get("currency", "") or ""),
+                    record.published_at,
+                    record.source_id,
+                    record.source_url,
+                    json.dumps(record.extra, ensure_ascii=False),
+                )
+            )
+        if not metric_rows:
+            return
+        connection.executemany(
+            """
+            INSERT OR REPLACE INTO core_finance_metrics (
+                metric_record_id, record_id, primary_entity, metric_name, metric_value,
+                metric_unit, currency, published_at, source_id, source_url, extra_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            metric_rows,
+        )
