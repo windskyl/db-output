@@ -20,6 +20,7 @@ class SourceRegistryTests(unittest.TestCase):
         self.assertIn('python_org_jobs_rss', sources)
         self.assertIn('hn_algolia_company_story_search', sources)
         self.assertIn('alpha_vantage_demo_earnings', sources)
+        self.assertIn('sec_press_releases_rss', sources)
         self.assertEqual(sources['python_org_jobs'].domain, 'jobs')
 
     def test_auto_selection_filters_by_channel(self) -> None:
@@ -65,6 +66,19 @@ class SourceRegistryTests(unittest.TestCase):
         })
         selected = [profile.source_id for profile in registry.list_for_task(task)]
         self.assertEqual(selected, ['alpha_vantage_demo_earnings'])
+
+    def test_finance_rss_source_can_be_selected_explicitly(self) -> None:
+        registry = SourceRegistry(ROOT / 'configs' / 'sources')
+        task = TaskSpec.from_dict({
+            'task_id': 'finance-rss-001',
+            'domain': 'finance',
+            'targets': [{'type': 'keyword', 'value': 'SEC'}],
+            'topic_scope': ['company_announcement'],
+            'time_range': {'start': '2026-03-01T00:00:00', 'end': '2026-03-19T23:59:59', 'timezone': 'UTC'},
+            'source_policy': {'selection_mode': 'explicit', 'whitelist': ['sec_press_releases_rss'], 'allow_html': False, 'allow_rss': True, 'allow_api': False, 'max_sources': 1},
+        })
+        selected = [profile.source_id for profile in registry.list_for_task(task)]
+        self.assertEqual(selected, ['sec_press_releases_rss'])
 
     def test_profile_validation_rejects_bad_connector_kind(self) -> None:
         with self.assertRaises(SourceProfileValidationError):

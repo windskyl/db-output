@@ -1,0 +1,53 @@
+﻿{
+  "source_id": "sec_press_releases_rss",
+  "domain": "finance",
+  "connector_kind": "rss_feed",
+  "source_type": "official_regulator_news",
+  "source_label": "SEC Press Releases RSS",
+  "base_url": "https://www.sec.gov",
+  "first_page_url": "https://www.sec.gov/news/pressreleases.rss",
+  "source_channel": "rss",
+  "max_pages": 1,
+  "max_items_per_fetch": 40,
+  "item_pattern": "",
+  "item_pattern_flags": [],
+  "field_patterns": {},
+  "field_pattern_flags": [],
+  "clean_fields": ["title", "summary"],
+  "entity_scope": [],
+  "text_match_fields": ["title", "summary"],
+  "pagination_pattern": null,
+  "stop_on_older_items": false,
+  "decode_html_entities": true,
+  "rss_item_fields": {
+    "title": "title",
+    "url": "link",
+    "summary": "description",
+    "guid": "guid",
+    "published_at": "pubDate"
+  },
+  "request_headers": {
+    "Accept": "application/rss+xml,application/xml,text/xml",
+    "User-Agent": "Mozilla/5.0 test@example.com"
+  },
+  "request_query_params": {},
+  "json_items_path": null,
+  "json_field_paths": {},
+  "topic_terms": {
+    "company_announcement": ["proposes", "publishes", "adopts", "announces", "clarifies", "release", "rule"],
+    "investment_news": ["securities", "market", "offering", "swap", "dealer", "disclosure"],
+    "financial_report": ["data", "report", "quarterly", "annual"]
+  },
+  "rate_limit_qps": 0.5,
+  "rate_limit_burst": 1,
+  "max_concurrency": 1,
+  "timeout_seconds": 20,
+  "retry_policy": {
+    "max_attempts": 2,
+    "base_delay_seconds": 1.0,
+    "backoff_multiplier": 2.0,
+    "max_delay_seconds": 4.0,
+    "jitter_ratio": 0.1,
+    "retry_on_status_codes": [429, 500, 502, 503, 504]
+  }
+}
