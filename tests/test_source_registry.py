@@ -18,6 +18,7 @@ class SourceRegistryTests(unittest.TestCase):
         self.assertIn('qianxin_news', sources)
         self.assertIn('python_org_jobs', sources)
         self.assertIn('python_org_jobs_rss', sources)
+        self.assertIn('hn_algolia_company_story_search', sources)
         self.assertEqual(sources['python_org_jobs'].domain, 'jobs')
 
     def test_auto_selection_filters_by_channel(self) -> None:

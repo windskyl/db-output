@@ -33,6 +33,11 @@ class SourceProfile:
     stop_on_older_items: bool = True
     decode_html_entities: bool = True
     rss_item_fields: dict[str, str] = field(default_factory=dict)
+    request_headers: dict[str, str] = field(default_factory=dict)
+    request_query_params: dict[str, str] = field(default_factory=dict)
+    json_items_path: str | None = None
+    json_field_paths: dict[str, str] = field(default_factory=dict)
+    topic_terms: dict[str, list[str]] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "SourceProfile":
@@ -49,7 +54,7 @@ class SourceProfile:
     def validate(self) -> None:
         if not self.source_id:
             raise SourceProfileValidationError('source_id must not be empty')
-        if self.connector_kind not in {'regex_html_list', 'rss_feed'}:
+        if self.connector_kind not in {'regex_html_list', 'rss_feed', 'json_api'}:
             raise SourceProfileValidationError(f'unsupported connector_kind: {self.connector_kind}')
         if self.source_channel not in {'html', 'rss', 'api'}:
             raise SourceProfileValidationError(f'unsupported source_channel: {self.source_channel}')
@@ -63,6 +68,12 @@ class SourceProfile:
             raise SourceProfileValidationError('regex_html_list profiles require item_pattern')
         if self.connector_kind == 'rss_feed' and self.source_channel != 'rss':
             raise SourceProfileValidationError('rss_feed profiles must use source_channel=rss')
+        if self.connector_kind == 'json_api' and self.source_channel != 'api':
+            raise SourceProfileValidationError('json_api profiles must use source_channel=api')
+        if self.connector_kind == 'json_api' and not self.json_items_path:
+            raise SourceProfileValidationError('json_api profiles require json_items_path')
+        if self.connector_kind == 'json_api' and not self.json_field_paths:
+            raise SourceProfileValidationError('json_api profiles require json_field_paths')
 
     def to_summary(self) -> dict[str, Any]:
         return {

@@ -1,32 +1,32 @@
 ﻿{
-  "task_id": "job-python-org-rss-001",
-  "scenario_template": "job_hunt_engineering_basic",
-  "domain": "jobs",
+  "task_id": "public-sentiment-openai-tech-001",
+  "scenario_template": "company_sentiment_tracking_basic",
+  "domain": "public_sentiment",
   "targets": [
     {
-      "type": "keyword",
-      "value": "Python"
+      "type": "company",
+      "value": "OpenAI"
     }
   ],
-  "topic_scope": ["backend"],
+  "topic_scope": ["tech_stack_engineering"],
   "time_range": {
-    "start": "2026-02-01T00:00:00",
-    "end": "2026-03-20T23:59:59",
+    "start": "2025-09-01T00:00:00",
+    "end": "2026-03-18T23:59:59",
     "timezone": "UTC"
   },
   "source_policy": {
     "selection_mode": "explicit",
-    "whitelist": ["python_org_jobs_rss"],
+    "whitelist": ["hn_algolia_company_story_search"],
     "blacklist": [],
     "prefer_official": false,
-    "allow_rss": true,
-    "allow_api": false,
+    "allow_rss": false,
+    "allow_api": true,
     "allow_html": false,
     "max_sources": 3
   },
   "relevance_policy": {
     "require_target_match": true,
-    "require_topic_match": false,
+    "require_topic_match": true,
     "require_cooccurrence": false,
     "min_relevance_score": 0.6
   },

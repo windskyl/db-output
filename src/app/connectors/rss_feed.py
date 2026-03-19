@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from datetime import UTC, date, datetime
 from email.utils import parsedate_to_datetime
 
+from app.connectors.common import matches_relevance
 from app.models.records import RawRecord
 from app.models.source_profile import SourceProfile
 from app.models.task_spec import TaskSpec
@@ -37,7 +38,7 @@ class RssFeedConnector:
             published_date = date.fromisoformat(published_at[:10])
             if published_date < start_date or published_date > end_date:
                 continue
-            if task.relevance_policy.require_target_match and not scoped_entity and not self._matches_targets(profile, parsed, task):
+            if not matches_relevance(profile, parsed, task, scoped_entity=scoped_entity):
                 continue
             source_item_id = parsed.get('source_item_id') or parsed.get('guid') or hashlib.sha256((parsed.get('url', '') + parsed.get('title', '')).encode('utf-8')).hexdigest()
             records.append(
@@ -124,11 +125,6 @@ class RssFeedConnector:
         if child is not None and child.text:
             return child.text
         return ''
-
-    def _matches_targets(self, profile: SourceProfile, item: dict[str, str], task: TaskSpec) -> bool:
-        haystack = ' '.join(str(item.get(field, '')) for field in profile.text_match_fields)
-        targets = [str(target.get('value', '')).strip() for target in task.targets]
-        return any(target and target.lower() in haystack.lower() for target in targets)
 
     def _is_scoped_entity(self, profile: SourceProfile, task: TaskSpec) -> bool:
         if not profile.entity_scope:

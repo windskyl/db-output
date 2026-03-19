@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 from datetime import UTC, date, datetime
 
+from app.connectors.common import matches_relevance
 from app.models.records import RawRecord
 from app.models.source_profile import SourceProfile
 from app.models.task_spec import TaskSpec
@@ -48,7 +49,7 @@ class RegexHtmlListConnector:
                     continue
                 if published_date > end_date:
                     continue
-                if task.relevance_policy.require_target_match and not scoped_entity and not self._matches_targets(profile, item, task):
+                if not matches_relevance(profile, item, task, scoped_entity=scoped_entity):
                     continue
                 item_source_id = str(item.get('source_item_id') or hashlib.sha256((item.get('url', '') + item.get('title', '')).encode('utf-8')).hexdigest())
                 records.append(
@@ -114,11 +115,6 @@ class RegexHtmlListConnector:
             if response.headers.get('Content-Encoding') == 'gzip' or data[:2] == b'\x1f\x8b':
                 data = gzip.decompress(data)
             return data.decode('utf-8', errors='ignore')
-
-    def _matches_targets(self, profile: SourceProfile, item: dict[str, str], task: TaskSpec) -> bool:
-        haystack = ' '.join(str(item.get(field, '')) for field in profile.text_match_fields)
-        targets = [str(target.get('value', '')).strip() for target in task.targets]
-        return any(target and target.lower() in haystack.lower() for target in targets)
 
     def _is_scoped_entity(self, profile: SourceProfile, task: TaskSpec) -> bool:
         if not profile.entity_scope:

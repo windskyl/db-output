@@ -5,6 +5,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.connectors.json_api import JsonApiConnector
 from app.connectors.regex_html_list import RegexHtmlListConnector
 from app.connectors.rss_feed import RssFeedConnector
 from app.domain_plugins.registry import DomainRegistry
@@ -28,6 +29,7 @@ class TaskService:
         self.connectors = {
             'regex_html_list': RegexHtmlListConnector(),
             'rss_feed': RssFeedConnector(),
+            'json_api': JsonApiConnector(),
         }
 
     def validate_task(self, task: TaskSpec) -> dict:
@@ -158,7 +160,7 @@ class TaskService:
                 'scenario_template': task.scenario_template,
                 'request_url': raw.request_url,
             }
-            for key in ('source_item_id', 'company', 'location', 'category', 'guid'):
+            for key in ('source_item_id', 'company', 'location', 'category', 'guid', 'author'):
                 if key in payload:
                     extra[key] = payload[key]
             normalized.append(

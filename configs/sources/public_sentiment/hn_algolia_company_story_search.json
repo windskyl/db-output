@@ -1,0 +1,48 @@
+﻿{
+  "source_id": "hn_algolia_company_story_search",
+  "domain": "public_sentiment",
+  "connector_kind": "json_api",
+  "source_type": "public_forum_api",
+  "source_label": "Hacker News Algolia Company Story Search",
+  "base_url": "https://hn.algolia.com",
+  "first_page_url": "https://hn.algolia.com/api/v1/search_by_date",
+  "source_channel": "api",
+  "max_pages": 1,
+  "max_items_per_fetch": 50,
+  "item_pattern": "",
+  "item_pattern_flags": [],
+  "field_patterns": {},
+  "field_pattern_flags": [],
+  "clean_fields": ["title", "summary"],
+  "entity_scope": [],
+  "text_match_fields": ["title", "summary", "url", "author"],
+  "pagination_pattern": null,
+  "stop_on_older_items": false,
+  "decode_html_entities": true,
+  "rss_item_fields": {},
+  "request_headers": {
+    "Accept": "application/json"
+  },
+  "request_query_params": {
+    "query": "{target}",
+    "tags": "story"
+  },
+  "json_items_path": "hits",
+  "json_field_paths": {
+    "source_item_id": "objectID",
+    "title": "title|story_title",
+    "summary": "story_text|comment_text",
+    "url": "url|story_url",
+    "published_at": "created_at",
+    "author": "author"
+  },
+  "topic_terms": {
+    "interview_experience": ["interview", "offer", "candidate", "recruiter"],
+    "salary_benefits": ["salary", "compensation", "pay", "benefits", "equity"],
+    "workload_overtime": ["overtime", "crunch", "on-call", "burnout", "workload"],
+    "management_culture": ["leadership", "management", "culture", "ipo", "board"],
+    "tech_stack_engineering": ["api", "model", "engineering", "sdk", "inference", "gpt"],
+    "layoff_hiring_freeze": ["layoff", "layoffs", "hiring freeze", "job cuts", "headcount"],
+    "remote_office_policy": ["remote", "hybrid", "office", "return to office", "rto"]
+  }
+}
