@@ -18,7 +18,7 @@ class SourceProfile:
     source_label: str
     base_url: str
     first_page_url: str
-    source_channel: str = 'html'
+    source_channel: str = "html"
     paged_url_template: str | None = None
     max_pages: int = 1
     max_items_per_fetch: int = 100
@@ -38,6 +38,11 @@ class SourceProfile:
     json_items_path: str | None = None
     json_field_paths: dict[str, str] = field(default_factory=dict)
     topic_terms: dict[str, list[str]] = field(default_factory=dict)
+    rate_limit_qps: float = 1.0
+    rate_limit_burst: int = 1
+    max_concurrency: int = 1
+    timeout_seconds: int | None = None
+    retry_policy: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "SourceProfile":
@@ -48,43 +53,56 @@ class SourceProfile:
     @classmethod
     def from_file(cls, path: Path) -> "SourceProfile":
         import json
-        payload = json.loads(path.read_text(encoding='utf-8-sig'))
+
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
         return cls.from_dict(payload)
 
     def validate(self) -> None:
         if not self.source_id:
-            raise SourceProfileValidationError('source_id must not be empty')
-        if self.connector_kind not in {'regex_html_list', 'rss_feed', 'json_api'}:
-            raise SourceProfileValidationError(f'unsupported connector_kind: {self.connector_kind}')
-        if self.source_channel not in {'html', 'rss', 'api'}:
-            raise SourceProfileValidationError(f'unsupported source_channel: {self.source_channel}')
+            raise SourceProfileValidationError("source_id must not be empty")
+        if self.connector_kind not in {"regex_html_list", "rss_feed", "json_api"}:
+            raise SourceProfileValidationError(f"unsupported connector_kind: {self.connector_kind}")
+        if self.source_channel not in {"html", "rss", "api"}:
+            raise SourceProfileValidationError(f"unsupported source_channel: {self.source_channel}")
         if not self.first_page_url:
-            raise SourceProfileValidationError('first_page_url must not be empty')
+            raise SourceProfileValidationError("first_page_url must not be empty")
         if self.max_pages < 1:
-            raise SourceProfileValidationError('max_pages must be >= 1')
+            raise SourceProfileValidationError("max_pages must be >= 1")
         if self.max_items_per_fetch < 1:
-            raise SourceProfileValidationError('max_items_per_fetch must be >= 1')
-        if self.connector_kind == 'regex_html_list' and not self.item_pattern:
-            raise SourceProfileValidationError('regex_html_list profiles require item_pattern')
-        if self.connector_kind == 'rss_feed' and self.source_channel != 'rss':
-            raise SourceProfileValidationError('rss_feed profiles must use source_channel=rss')
-        if self.connector_kind == 'json_api' and self.source_channel != 'api':
-            raise SourceProfileValidationError('json_api profiles must use source_channel=api')
-        if self.connector_kind == 'json_api' and not self.json_items_path:
-            raise SourceProfileValidationError('json_api profiles require json_items_path')
-        if self.connector_kind == 'json_api' and not self.json_field_paths:
-            raise SourceProfileValidationError('json_api profiles require json_field_paths')
+            raise SourceProfileValidationError("max_items_per_fetch must be >= 1")
+        if self.rate_limit_qps <= 0:
+            raise SourceProfileValidationError("rate_limit_qps must be > 0")
+        if self.rate_limit_burst < 1:
+            raise SourceProfileValidationError("rate_limit_burst must be >= 1")
+        if self.max_concurrency < 1:
+            raise SourceProfileValidationError("max_concurrency must be >= 1")
+        if self.timeout_seconds is not None and self.timeout_seconds < 1:
+            raise SourceProfileValidationError("timeout_seconds must be >= 1 when provided")
+        if self.connector_kind == "regex_html_list" and not self.item_pattern:
+            raise SourceProfileValidationError("regex_html_list profiles require item_pattern")
+        if self.connector_kind == "rss_feed" and self.source_channel != "rss":
+            raise SourceProfileValidationError("rss_feed profiles must use source_channel=rss")
+        if self.connector_kind == "json_api" and self.source_channel != "api":
+            raise SourceProfileValidationError("json_api profiles must use source_channel=api")
+        if self.connector_kind == "json_api" and not self.json_items_path:
+            raise SourceProfileValidationError("json_api profiles require json_items_path")
+        if self.connector_kind == "json_api" and not self.json_field_paths:
+            raise SourceProfileValidationError("json_api profiles require json_field_paths")
 
     def to_summary(self) -> dict[str, Any]:
         return {
-            'source_id': self.source_id,
-            'domain': self.domain,
-            'connector_kind': self.connector_kind,
-            'source_channel': self.source_channel,
-            'source_type': self.source_type,
-            'source_label': self.source_label,
-            'base_url': self.base_url,
-            'first_page_url': self.first_page_url,
-            'max_pages': self.max_pages,
-            'max_items_per_fetch': self.max_items_per_fetch,
+            "source_id": self.source_id,
+            "domain": self.domain,
+            "connector_kind": self.connector_kind,
+            "source_channel": self.source_channel,
+            "source_type": self.source_type,
+            "source_label": self.source_label,
+            "base_url": self.base_url,
+            "first_page_url": self.first_page_url,
+            "max_pages": self.max_pages,
+            "max_items_per_fetch": self.max_items_per_fetch,
+            "rate_limit_qps": self.rate_limit_qps,
+            "rate_limit_burst": self.rate_limit_burst,
+            "max_concurrency": self.max_concurrency,
+            "timeout_seconds": self.timeout_seconds,
         }

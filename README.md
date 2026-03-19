@@ -1,4 +1,4 @@
-﻿# db-output
+# db-output
 
 A local-first, rule-driven data collection project for investment and job-hunting workflows.
 
@@ -6,11 +6,12 @@ A local-first, rule-driven data collection project for investment and job-huntin
 
 This repository currently contains:
 
-- `需求文档_v0.1.md`
-- `实现方案_v0.1.md`
+- the requirements document
+- the implementation plan
 - a runnable Python project skeleton
 - a local CLI for task validation and execution
 - a source catalog CLI for inspecting configured source websites
+- a task run inspection CLI for completed local artifacts
 - three-layer persistence for `raw`, `normalized`, and `artifacts`
 - a SQLite writer for verification-friendly outputs
 - configuration-driven source profiles under `configs/sources/`
@@ -79,5 +80,25 @@ Run a public sentiment API task:
 ```powershell
 db-output run tasks/examples/public_sentiment_openai_tech_recent.json
 ```
+
+List completed local task runs:
+
+```powershell
+db-output tasks --domain jobs
+```
+
+Show stored status, counts, and artifact paths for a task:
+
+```powershell
+db-output status job-python-org-rss-001
+```
+
+Open the stored run and quality reports for a task:
+
+```powershell
+db-output report job-python-org-rss-001 --kind all
+```
+
+`db-output logs <task_id>` is available as an alias of `report`.
 
 Outputs are written under `data/` by default.

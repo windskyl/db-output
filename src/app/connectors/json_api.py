@@ -1,30 +1,40 @@
 ﻿from __future__ import annotations
 
-import gzip
 import hashlib
 import json
 import re
 import urllib.parse
-import urllib.request
 from datetime import UTC, date, datetime
 from typing import Any
 
 from app.connectors.common import build_request_context, format_template, matches_relevance
+from app.fetching.client import FetchClient
+from app.fetching.limiter import RateLimiter
+from app.fetching.models import FetchRequest
+from app.fetching.scheduler import Scheduler
 from app.models.records import RawRecord
 from app.models.source_profile import SourceProfile
 from app.models.task_spec import TaskSpec
 
 
 class JsonApiConnector:
-    connector_kind = 'json_api'
+    connector_kind = "json_api"
+
+    def __init__(self, scheduler: Scheduler | None = None) -> None:
+        self.scheduler = scheduler or Scheduler(FetchClient(rate_limiter=RateLimiter()))
 
     def collect(self, profile: SourceProfile, task: TaskSpec) -> list[RawRecord]:
         start_date = date.fromisoformat(task.time_range.start[:10])
         end_date = date.fromisoformat(task.time_range.end[:10])
         scoped_entity = self._is_scoped_entity(profile, task)
         request_url = self._build_request_url(profile, task)
-        payload = self._fetch_json(profile, request_url)
-        items = self._extract_items(payload, profile.json_items_path or '')
+        response = self.scheduler.fetch(
+            request=FetchRequest(url=request_url, headers={"Accept": "application/json"}),
+            profile=profile,
+            task=task,
+        )
+        payload = response.json()
+        items = self._extract_items(payload, profile.json_items_path or "")
         if not isinstance(items, list):
             return []
 
@@ -35,7 +45,7 @@ class JsonApiConnector:
             parsed = self._parse_item(profile, item)
             if not parsed:
                 continue
-            published_at = parsed.get('published_at', '')
+            published_at = parsed.get("published_at", "")
             if not published_at:
                 continue
             published_date = date.fromisoformat(published_at[:10])
@@ -43,7 +53,7 @@ class JsonApiConnector:
                 continue
             if not matches_relevance(profile, parsed, task, scoped_entity=scoped_entity):
                 continue
-            source_item_id = parsed.get('source_item_id') or hashlib.sha256((parsed.get('url', '') + parsed.get('title', '')).encode('utf-8')).hexdigest()
+            source_item_id = parsed.get("source_item_id") or hashlib.sha256((parsed.get("url", "") + parsed.get("title", "")).encode("utf-8")).hexdigest()
             records.append(
                 RawRecord(
                     task_id=task.task_id,
@@ -53,8 +63,8 @@ class JsonApiConnector:
                     source_label=profile.source_label,
                     fetched_at=datetime.now(UTC).isoformat(),
                     request_url=request_url,
-                    http_status=200,
-                    content_hash=f'{profile.source_id}:{source_item_id}:{published_at}',
+                    http_status=response.status_code,
+                    content_hash=f"{profile.source_id}:{source_item_id}:{published_at}",
                     raw_payload=parsed,
                 )
             )
@@ -78,25 +88,9 @@ class JsonApiConnector:
         query = urllib.parse.urlencode(merged_params)
         return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, query, parsed.fragment))
 
-    def _fetch_json(self, profile: SourceProfile, url: str) -> dict[str, Any]:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                          '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip',
-        }
-        headers.update(profile.request_headers)
-        request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=20) as response:
-            data = response.read()
-            if response.headers.get('Content-Encoding') == 'gzip' or data[:2] == b'\x1f\x8b':
-                data = gzip.decompress(data)
-            return json.loads(data.decode('utf-8', errors='ignore'))
-
     def _extract_items(self, payload: Any, path: str) -> Any:
         value: Any = payload
-        for part in path.split('.'):
+        for part in path.split("."):
             if not part:
                 continue
             if isinstance(value, dict):
@@ -111,20 +105,20 @@ class JsonApiConnector:
         parsed: dict[str, str] = {}
         for target_field, source_path in profile.json_field_paths.items():
             value = self._extract_field_value(item, source_path)
-            if value in (None, '', [], {}):
+            if value in (None, "", [], {}):
                 continue
             if isinstance(value, list):
-                value = ' '.join(str(part) for part in value if part not in (None, ''))
+                value = " ".join(str(part) for part in value if part not in (None, ""))
             elif isinstance(value, dict):
                 value = json.dumps(value, ensure_ascii=False, sort_keys=True)
             else:
                 value = str(value)
-            if target_field == 'published_at':
+            if target_field == "published_at":
                 normalized_date = self._normalize_date(value)
                 if normalized_date:
                     parsed[target_field] = normalized_date
                 continue
-            if target_field == 'url':
+            if target_field == "url":
                 value = urllib.parse.urljoin(profile.base_url, value)
             parsed[target_field] = value
         for field in profile.clean_fields:
@@ -133,21 +127,21 @@ class JsonApiConnector:
         return parsed
 
     def _extract_field_value(self, item: dict[str, Any], path_expression: str) -> Any:
-        for candidate in path_expression.split('|'):
+        for candidate in path_expression.split("|"):
             candidate = candidate.strip()
             if not candidate:
                 continue
             value = self._extract_items(item, candidate)
-            if value not in (None, '', [], {}):
+            if value not in (None, "", [], {}):
                 return value
         return None
 
     def _normalize_date(self, value: str) -> str | None:
         try:
-            normalized = value.replace('Z', '+00:00')
+            normalized = value.replace("Z", "+00:00")
             return datetime.fromisoformat(normalized).date().isoformat()
         except ValueError:
-            match = re.search(r'\d{4}-\d{2}-\d{2}', value)
+            match = re.search(r"\d{4}-\d{2}-\d{2}", value)
             if match:
                 return match.group(0)
             return None
@@ -155,8 +149,8 @@ class JsonApiConnector:
     def _is_scoped_entity(self, profile: SourceProfile, task: TaskSpec) -> bool:
         if not profile.entity_scope:
             return False
-        targets = [str(target.get('value', '')).strip() for target in task.targets]
+        targets = [str(target.get("value", "")).strip() for target in task.targets]
         return any(target in profile.entity_scope for target in targets)
 
     def _clean_text(self, text: str) -> str:
-        return ' '.join(str(text).split())
+        return " ".join(str(text).split())
