@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -42,6 +42,8 @@ class CliTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             sqlite_path = Path(payload["artifacts"]["sqlite_file"])
             self.assertTrue(sqlite_path.exists())
+            self.assertIn("cache_dir", payload["artifacts"])
+            self.assertTrue(Path(payload["artifacts"]["cache_dir"]).exists())
             self.assertIn("created_at", payload)
             self.assertIn("selected_sources", payload)
             self.assertIn("fetch_stats", payload["quality_report"])
@@ -85,6 +87,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(payload["task"]["task_id"], "job-sample-001")
             self.assertEqual(payload["status"], "success")
             self.assertIn("sqlite_file", payload["artifacts"])
+            self.assertIn("cache_dir", payload["artifacts"])
             self.assertEqual(payload["quality_report"]["output_count"], 1)
             self.assertIn("fetch_stats", payload["quality_report"])
 

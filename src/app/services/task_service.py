@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import hashlib
 import json
@@ -130,11 +130,14 @@ class TaskService:
 
         paths = TaskPaths(base_dir=self.base_dir, domain=task.domain, task_id=task.task_id)
         paths.ensure()
+        if task.run_policy.enable_cache:
+            paths.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        self.fetch_client.begin_session(task.task_id)
+        self.fetch_client.begin_session(task.task_id, cache_dir=paths.cache_dir if task.run_policy.enable_cache else None)
         selected_sources = self.source_registry.list_for_task(task)
         raw_records = self._collect_raw_records(task, selected_sources)
         normalized_records = self._normalize_records(task, raw_records)
+        output_records, quality_stats = self._apply_quality_policy(task, normalized_records)
         fetch_stats = self.fetch_client.build_stats()
 
         if task.output_policy.keep_raw:
@@ -147,15 +150,15 @@ class TaskService:
             "domain": task.domain,
             "raw_count": len(raw_records),
             "normalized_count": len(normalized_records),
-            "deduped_count": len(normalized_records),
-            "output_count": len(normalized_records),
+            "deduped_count": quality_stats["deduped_count"],
+            "output_count": len(output_records),
             "dropped_by_relevance": 0,
-            "dropped_by_quality": 0,
-            "missing_field_stats": {},
+            "dropped_by_quality": quality_stats["dropped_by_quality"],
+            "missing_field_stats": quality_stats["missing_field_stats"],
             "source_stats": self._build_source_stats(raw_records),
             "fetch_stats": fetch_stats,
             "error_stats": fetch_stats["error_types"],
-            "warnings": self._build_warnings(raw_records, fetch_stats),
+            "warnings": self._build_warnings(raw_records, fetch_stats, quality_stats),
         }
         run_summary = {
             "task_id": task.task_id,
@@ -164,7 +167,7 @@ class TaskService:
             "status": "success",
             "raw_count": len(raw_records),
             "normalized_count": len(normalized_records),
-            "output_count": len(normalized_records),
+            "output_count": len(output_records),
             "quality_report": quality_report,
         }
         artifacts = RunArtifacts(
@@ -175,8 +178,9 @@ class TaskService:
             sqlite_file=str(paths.sqlite_file),
             quality_report_file=str(paths.quality_report_file),
             run_report_file=str(paths.run_report_file),
+            cache_dir=str(paths.cache_dir) if task.run_policy.enable_cache else None,
         )
-        self.writer.write(run_summary, normalized_records, artifacts)
+        self.writer.write(run_summary, output_records, artifacts)
         paths.quality_report_file.write_text(json.dumps(quality_report, ensure_ascii=False, indent=2), encoding="utf-8")
         paths.run_report_file.write_text(
             json.dumps(
@@ -189,15 +193,20 @@ class TaskService:
                         "sqlite_file": artifacts.sqlite_file,
                         "quality_report_file": artifacts.quality_report_file,
                         "run_report_file": artifacts.run_report_file,
+                        "cache_dir": artifacts.cache_dir,
                     },
                     "status": "success",
                     "created_at": artifacts.created_at,
                     "quality_summary": {
                         "raw_count": quality_report["raw_count"],
                         "normalized_count": quality_report["normalized_count"],
+                        "deduped_count": quality_report["deduped_count"],
                         "output_count": quality_report["output_count"],
                         "warning_count": len(quality_report["warnings"]),
                         "fetch_request_count": fetch_stats["total_requests"],
+                        "fetch_network_request_count": fetch_stats["network_requests"],
+                        "fetch_cache_hit_count": fetch_stats["cache_hits"],
+                        "fetch_cache_miss_count": fetch_stats["cache_misses"],
                         "fetch_retry_count": fetch_stats["total_retries"],
                         "fetch_failure_count": fetch_stats["failed_requests"],
                         "source_stats": quality_report["source_stats"],
@@ -218,6 +227,7 @@ class TaskService:
                 "sqlite_file": artifacts.sqlite_file,
                 "quality_report_file": artifacts.quality_report_file,
                 "run_report_file": artifacts.run_report_file,
+                "cache_dir": artifacts.cache_dir,
             },
             "quality_report": quality_report,
         }
@@ -280,18 +290,95 @@ class TaskService:
             )
         return normalized
 
+    def _apply_quality_policy(self, task: TaskSpec, records: list[NormalizedRecord]) -> tuple[list[NormalizedRecord], dict[str, Any]]:
+        deduped_records, duplicate_count = self._dedupe_records(task, records)
+        quality_filtered_records, missing_field_stats, dropped_by_quality = self._filter_quality_records(task, deduped_records)
+        output_records = quality_filtered_records[: task.output_policy.max_output_records]
+        truncated_count = max(0, len(quality_filtered_records) - len(output_records))
+        return output_records, {
+            "deduped_count": len(deduped_records),
+            "duplicate_count": duplicate_count,
+            "dropped_by_quality": dropped_by_quality,
+            "missing_field_stats": missing_field_stats,
+            "truncated_count": truncated_count,
+        }
+
+    def _dedupe_records(self, task: TaskSpec, records: list[NormalizedRecord]) -> tuple[list[NormalizedRecord], int]:
+        if task.quality_policy.dedupe_mode == "none":
+            return list(records), 0
+        seen: set[str] = set()
+        deduped: list[NormalizedRecord] = []
+        duplicates = 0
+        for record in records:
+            key = record.dedupe_key or record.record_id
+            if key in seen:
+                duplicates += 1
+                continue
+            seen.add(key)
+            deduped.append(record)
+        return deduped, duplicates
+
+    def _filter_quality_records(self, task: TaskSpec, records: list[NormalizedRecord]) -> tuple[list[NormalizedRecord], dict[str, int], int]:
+        required_fields = list(task.quality_policy.required_fields)
+        if not required_fields:
+            return list(records), {}, 0
+
+        missing_field_stats: dict[str, int] = {field: 0 for field in required_fields}
+        kept: list[NormalizedRecord] = []
+        dropped = 0
+
+        for record in records:
+            missing_fields = [field for field in required_fields if self._is_missing_record_field(record, field)]
+            if missing_fields:
+                for field in missing_fields:
+                    missing_field_stats[field] += 1
+                for field in missing_fields:
+                    flag = f"missing_required:{field}"
+                    if flag not in record.quality_flags:
+                        record.quality_flags.append(flag)
+            missing_ratio = len(missing_fields) / len(required_fields)
+            if missing_ratio > task.quality_policy.max_missing_ratio:
+                dropped += 1
+                continue
+            kept.append(record)
+
+        return kept, {field: count for field, count in missing_field_stats.items() if count > 0}, dropped
+
+    def _is_missing_record_field(self, record: NormalizedRecord, field_name: str) -> bool:
+        value = self._record_field_value(record, field_name)
+        if value is None:
+            return True
+        if isinstance(value, str):
+            return not value.strip()
+        if isinstance(value, (list, dict, tuple, set)):
+            return len(value) == 0
+        return False
+
+    def _record_field_value(self, record: NormalizedRecord, field_name: str) -> Any:
+        if hasattr(record, field_name):
+            return getattr(record, field_name)
+        return record.extra.get(field_name)
+
     def _build_source_stats(self, raw_records: list[RawRecord]) -> dict[str, int]:
         stats: dict[str, int] = {}
         for record in raw_records:
             stats[record.source_id] = stats.get(record.source_id, 0) + 1
         return stats
 
-    def _build_warnings(self, raw_records: list[RawRecord], fetch_stats: dict[str, Any]) -> list[str]:
+    def _build_warnings(self, raw_records: list[RawRecord], fetch_stats: dict[str, Any], quality_stats: dict[str, Any]) -> list[str]:
         warnings: list[str] = []
         if raw_records and raw_records[0].source_id == "seed":
             warnings.append("This run used the local seed fallback because no live source profile produced records.")
+        if fetch_stats.get("cache_hits", 0) > 0:
+            warnings.append(f"Fetch cache served {fetch_stats['cache_hits']} request(s).")
         if fetch_stats.get("total_retries", 0) > 0:
             warnings.append(f"Fetch retries were used for {fetch_stats['total_retries']} attempt(s).")
+        if quality_stats.get("duplicate_count", 0) > 0:
+            warnings.append(f"Deduplication removed {quality_stats['duplicate_count']} duplicate record(s).")
+        if quality_stats.get("dropped_by_quality", 0) > 0:
+            warnings.append(f"Quality rules dropped {quality_stats['dropped_by_quality']} record(s).")
+        if quality_stats.get("truncated_count", 0) > 0:
+            warnings.append(f"Output was truncated by max_output_records and removed {quality_stats['truncated_count']} record(s).")
         return warnings
 
     def _primary_entity(self, task: TaskSpec, payload: dict) -> str:

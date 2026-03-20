@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -61,6 +61,8 @@ class QualityPolicy:
     max_missing_ratio: float = 0.2
 
     def validate(self) -> None:
+        if self.dedupe_mode not in {"strict", "none"}:
+            raise TaskValidationError("quality_policy.dedupe_mode must be strict or none")
         if not 0 <= self.max_missing_ratio <= 1:
             raise TaskValidationError("quality_policy.max_missing_ratio must be within [0, 1]")
 

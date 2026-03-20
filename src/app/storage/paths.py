@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +21,10 @@ class TaskPaths:
     @property
     def artifacts_dir(self) -> Path:
         return self.base_dir / "artifacts" / self.domain / self.task_id
+
+    @property
+    def cache_dir(self) -> Path:
+        return self.base_dir / "cache" / self.domain / self.task_id
 
     @property
     def raw_file(self) -> Path:

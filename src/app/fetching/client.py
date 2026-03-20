@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import gzip
 import random
@@ -7,8 +7,10 @@ import time
 import urllib.error
 import urllib.request
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Callable
 
+from app.fetching.cache import FetchCache
 from app.fetching.limiter import RateLimiter
 from app.fetching.models import FetchAttempt, FetchEvent, FetchRequest, FetchResponse, RetryPolicy
 from app.models.source_profile import SourceProfile
@@ -22,19 +24,62 @@ class FetchClient:
         open_url: Callable[..., Any] | None = None,
         sleep_func: Callable[[float], None] | None = None,
         random_func: Callable[[], float] | None = None,
+        cache: FetchCache | None = None,
     ) -> None:
         self.rate_limiter = rate_limiter or RateLimiter()
         self._open_url = open_url or urllib.request.urlopen
         self._sleep = sleep_func or time.sleep
         self._random = random_func or random.random
+        self.cache = cache or FetchCache()
         self._events: list[FetchEvent] = []
         self._active_task_id: str | None = None
+        self._cache_enabled = False
+        self._cache_hits = 0
+        self._cache_misses = 0
+        self._cache_writes = 0
 
-    def begin_session(self, task_id: str) -> None:
+    def begin_session(self, task_id: str, cache_dir: Path | None = None) -> None:
         self._active_task_id = task_id
         self._events = []
+        self.cache.set_root_dir(cache_dir)
+        self._cache_enabled = cache_dir is not None
+        self._cache_hits = 0
+        self._cache_misses = 0
+        self._cache_writes = 0
 
     def fetch(self, request: FetchRequest, profile: SourceProfile, task: TaskSpec) -> FetchResponse:
+        request_headers = self._build_headers(profile, request)
+        cached_response = self._load_cached_response(
+            request=request,
+            profile=profile,
+            task=task,
+            headers=request_headers,
+        )
+        if cached_response is not None:
+            cached_at = cached_response.fetched_at or datetime.now(UTC).isoformat()
+            attempts = [
+                FetchAttempt(
+                    index=1,
+                    url=cached_response.final_url,
+                    started_at=cached_at,
+                    completed_at=cached_at,
+                    duration_ms=0,
+                    status_code=cached_response.status_code,
+                )
+            ]
+            cached_response.attempts = attempts
+            self._record_event(
+                source_id=profile.source_id,
+                request_url=request.url,
+                final_url=cached_response.final_url,
+                status_code=cached_response.status_code,
+                success=True,
+                wait_ms=0,
+                attempts=attempts,
+                from_cache=True,
+            )
+            return cached_response
+
         wait_ms = self.rate_limiter.acquire(
             key=profile.source_id,
             qps=profile.rate_limit_qps,
@@ -53,7 +98,7 @@ class FetchClient:
                     request.url,
                     data=request.body,
                     method=request.method,
-                    headers=self._build_headers(profile, request),
+                    headers=request_headers,
                 )
                 with self._open_url(urllib_request, timeout=timeout_seconds) as response:
                     raw_body = response.read()
@@ -78,6 +123,14 @@ class FetchClient:
                         body=self._decode_body(raw_body, headers),
                         attempts=list(attempts),
                     )
+                    if self._should_use_cache(request, task):
+                        self.cache.save(
+                            source_id=profile.source_id,
+                            request=request,
+                            headers=request_headers,
+                            response=fetch_response,
+                        )
+                        self._cache_writes += 1
                     self._record_event(
                         source_id=profile.source_id,
                         request_url=request.url,
@@ -156,16 +209,23 @@ class FetchClient:
         stats: dict[str, Any] = {
             "task_id": self._active_task_id,
             "total_requests": len(self._events),
+            "network_requests": 0,
             "successful_requests": 0,
             "failed_requests": 0,
             "total_retries": 0,
             "total_wait_ms": 0,
+            "cache_enabled": self._cache_enabled,
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "cache_writes": self._cache_writes,
             "status_codes": {},
             "error_types": {},
             "source_stats": {},
             "recent_errors": [],
         }
         for event in self._events:
+            if not event.from_cache:
+                stats["network_requests"] += 1
             if event.success:
                 stats["successful_requests"] += 1
             else:
@@ -191,6 +251,8 @@ class FetchClient:
                 event.source_id,
                 {
                     "requests": 0,
+                    "network_requests": 0,
+                    "cache_hits": 0,
                     "successful_requests": 0,
                     "failed_requests": 0,
                     "retries": 0,
@@ -199,6 +261,10 @@ class FetchClient:
                 },
             )
             source_stats["requests"] += 1
+            if event.from_cache:
+                source_stats["cache_hits"] += 1
+            else:
+                source_stats["network_requests"] += 1
             if event.success:
                 source_stats["successful_requests"] += 1
             else:
@@ -222,6 +288,25 @@ class FetchClient:
         headers.update(profile.request_headers)
         headers.update(request.headers)
         return headers
+
+    def _load_cached_response(
+        self,
+        request: FetchRequest,
+        profile: SourceProfile,
+        task: TaskSpec,
+        headers: dict[str, str],
+    ) -> FetchResponse | None:
+        if not self._should_use_cache(request, task):
+            return None
+        response = self.cache.load(source_id=profile.source_id, request=request, headers=headers)
+        if response is None:
+            self._cache_misses += 1
+            return None
+        self._cache_hits += 1
+        return response
+
+    def _should_use_cache(self, request: FetchRequest, task: TaskSpec) -> bool:
+        return self._cache_enabled and task.run_policy.enable_cache and request.method.upper() == "GET"
 
     def _resolve_retry_policy(self, profile: SourceProfile, task: TaskSpec) -> RetryPolicy:
         payload = dict(profile.retry_policy)
@@ -260,6 +345,7 @@ class FetchClient:
         attempts: list[FetchAttempt],
         error_type: str | None = None,
         error_message: str | None = None,
+        from_cache: bool = False,
     ) -> None:
         self._events.append(
             FetchEvent(
@@ -274,5 +360,6 @@ class FetchClient:
                 duration_ms=sum(attempt.duration_ms for attempt in attempts),
                 error_type=error_type,
                 error_message=error_message,
+                from_cache=from_cache,
             )
         )

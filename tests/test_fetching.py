@@ -1,9 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import gzip
 import io
+import tempfile
 import unittest
 import urllib.error
+from pathlib import Path
 from unittest.mock import Mock
 
 from app.fetching.client import FetchClient
@@ -131,6 +133,50 @@ class FetchClientTests(unittest.TestCase):
         )
 
         self.assertEqual(response.json(), {"hits": [1]})
+
+    def test_fetch_client_uses_disk_cache_for_repeated_get(self) -> None:
+        opener = Mock(
+            return_value=FakeResponse(
+                url="https://example.com/api/search",
+                status=200,
+                body=b'{"hits": [1]}',
+                headers={"Content-Type": "application/json"},
+            )
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = FetchClient(
+                rate_limiter=RateLimiter(sleep_func=lambda _: None),
+                open_url=opener,
+                sleep_func=lambda _: None,
+            )
+            client.begin_session("fetch-test-003", cache_dir=Path(temp_dir))
+            request = FetchRequest(url="https://example.com/api/search", headers={"Accept": "application/json"})
+
+            first_response = client.fetch(
+                request=request,
+                profile=self.build_profile(),
+                task=self.build_task(),
+            )
+            second_response = client.fetch(
+                request=request,
+                profile=self.build_profile(),
+                task=self.build_task(),
+            )
+
+            self.assertFalse(first_response.from_cache)
+            self.assertTrue(second_response.from_cache)
+            self.assertEqual(opener.call_count, 1)
+            stats = client.build_stats()
+            self.assertEqual(stats["total_requests"], 2)
+            self.assertEqual(stats["network_requests"], 1)
+            self.assertTrue(stats["cache_enabled"])
+            self.assertEqual(stats["cache_hits"], 1)
+            self.assertEqual(stats["cache_misses"], 1)
+            self.assertEqual(stats["cache_writes"], 1)
+            self.assertEqual(stats["source_stats"]["example_api"]["cache_hits"], 1)
+            self.assertEqual(stats["source_stats"]["example_api"]["network_requests"], 1)
+            cache_files = list((Path(temp_dir) / "example_api").glob("*.json"))
+            self.assertEqual(len(cache_files), 1)
 
 
 if __name__ == "__main__":

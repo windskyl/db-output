@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -57,4 +57,5 @@ class RunArtifacts:
     sqlite_file: str
     quality_report_file: str
     run_report_file: str
+    cache_dir: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())

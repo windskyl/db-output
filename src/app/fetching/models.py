@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import re
@@ -48,6 +48,7 @@ class FetchResponse:
     body: bytes = b""
     attempts: list[FetchAttempt] = field(default_factory=list)
     fetched_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    from_cache: bool = False
 
     def text(self, encoding: str | None = None) -> str:
         return self.body.decode(encoding or self._detect_encoding(), errors="ignore")
@@ -74,4 +75,5 @@ class FetchEvent:
     duration_ms: int
     error_type: str | None = None
     error_message: str | None = None
+    from_cache: bool = False
     finished_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())

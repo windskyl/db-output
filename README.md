@@ -1,4 +1,4 @@
-﻿# db-output
+# db-output
 
 一个本地优先、规则驱动的数据采集项目，用于投资和求职场景下的数据收集、清洗与结果落库。
 
@@ -122,3 +122,8 @@ db-output report job-python-org-rss-001 --kind all
 测试链路产生的临时结果说明文件只保留在本地，不纳入版本控制。
 
 默认输出目录是 `data/`。
+## Quality Behavior
+
+- quality_policy.dedupe_mode=strict will deduplicate normalized records by dedupe_key before writing output.
+- quality_policy.required_fields and quality_policy.max_missing_ratio will drop records that exceed the allowed missing-field ratio.
+- normalized.jsonl.gz keeps normalized candidates for inspection, while SQLite only stores the post-quality output rows.
