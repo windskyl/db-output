@@ -1,0 +1,65 @@
+{
+  "source_id": "alpha_vantage_demo_daily_quotes",
+  "domain": "finance",
+  "connector_kind": "json_api",
+  "source_type": "public_finance_api",
+  "source_label": "Alpha Vantage Demo Daily Quotes",
+  "base_url": "https://www.alphavantage.co",
+  "first_page_url": "https://www.alphavantage.co/query",
+  "source_channel": "api",
+  "max_pages": 1,
+  "max_items_per_fetch": 10,
+  "item_pattern": "",
+  "item_pattern_flags": [],
+  "field_patterns": {},
+  "field_pattern_flags": [],
+  "clean_fields": ["title", "summary"],
+  "entity_scope": [],
+  "text_match_fields": ["title", "summary", "symbol", "metric_name", "trading_date"],
+  "pagination_pattern": null,
+  "stop_on_older_items": false,
+  "decode_html_entities": true,
+  "rss_item_fields": {},
+  "request_headers": {
+    "Accept": "application/json"
+  },
+  "request_query_params": {
+    "function": "TIME_SERIES_DAILY",
+    "symbol": "{target}",
+    "apikey": "demo"
+  },
+  "json_items_path": "Time Series (Daily)",
+  "json_item_key_field": "trading_date",
+  "json_field_paths": {
+    "source_item_id": "trading_date",
+    "title": "literal:Daily Market Quote",
+    "summary": "4. close",
+    "published_at": "trading_date",
+    "symbol": "$context.target",
+    "category": "literal:daily_quote",
+    "metric_name": "literal:close",
+    "metric_value": "4. close",
+    "open_price": "1. open",
+    "high_price": "2. high",
+    "low_price": "3. low",
+    "close_price": "4. close",
+    "volume": "5. volume",
+    "trading_date": "trading_date"
+  },
+  "topic_terms": {
+    "market_quote": ["quote", "close", "open", "price", "volume"],
+    "investment_news": ["market", "daily", "trading"]
+  },
+  "rate_limit_qps": 0.5,
+  "rate_limit_burst": 1,
+  "max_concurrency": 1,
+  "timeout_seconds": 20,
+  "retry_policy": {
+    "max_attempts": 2,
+    "base_delay_seconds": 1.0,
+    "backoff_multiplier": 2.0,
+    "max_delay_seconds": 4.0,
+    "jitter_ratio": 0.1,
+    "retry_on_status_codes": [429, 500, 502, 503, 504]
+  }
+}

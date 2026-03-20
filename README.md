@@ -87,6 +87,12 @@ db-output run tasks/examples/public_sentiment_openai_tech_recent.json
 db-output run tasks/examples/finance_ibm_earnings_recent.json
 ```
 
+运行 finance 日线行情任务：
+
+```powershell
+db-output run tasks/examples/finance_ibm_daily_quotes_recent.json
+```
+
 运行 finance 监管公告 RSS 任务：
 
 ```powershell

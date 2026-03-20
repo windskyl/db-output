@@ -36,6 +36,7 @@ class SourceProfile:
     request_headers: dict[str, str] = field(default_factory=dict)
     request_query_params: dict[str, str] = field(default_factory=dict)
     json_items_path: str | None = None
+    json_item_key_field: str | None = None
     json_field_paths: dict[str, str] = field(default_factory=dict)
     topic_terms: dict[str, list[str]] = field(default_factory=dict)
     rate_limit_qps: float = 1.0

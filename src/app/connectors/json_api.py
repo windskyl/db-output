@@ -27,7 +27,8 @@ class JsonApiConnector:
         start_date = date.fromisoformat(task.time_range.start[:10])
         end_date = date.fromisoformat(task.time_range.end[:10])
         scoped_entity = self._is_scoped_entity(profile, task)
-        request_url = self._build_request_url(profile, task)
+        request_context = build_request_context(profile, task)
+        request_url = self._build_request_url(profile, task, request_context=request_context)
         response = self.scheduler.fetch(
             request=FetchRequest(url=request_url, headers={"Accept": "application/json"}),
             profile=profile,
@@ -35,6 +36,7 @@ class JsonApiConnector:
         )
         payload = response.json()
         items = self._extract_items(payload, profile.json_items_path or "")
+        items = self._coerce_items(items, key_field=profile.json_item_key_field)
         if not isinstance(items, list):
             return []
 
@@ -42,7 +44,7 @@ class JsonApiConnector:
         for item in items[: profile.max_items_per_fetch]:
             if not isinstance(item, dict):
                 continue
-            parsed = self._parse_item(profile, item, root_payload=payload)
+            parsed = self._parse_item(profile, item, root_payload=payload, context=request_context)
             if not parsed:
                 continue
             published_at = parsed.get("published_at", "")
@@ -70,8 +72,8 @@ class JsonApiConnector:
             )
         return records
 
-    def _build_request_url(self, profile: SourceProfile, task: TaskSpec) -> str:
-        context = build_request_context(profile, task)
+    def _build_request_url(self, profile: SourceProfile, task: TaskSpec, request_context: dict[str, str] | None = None) -> str:
+        context = request_context or build_request_context(profile, task)
         base_url = format_template(profile.first_page_url, context)
         if not profile.request_query_params:
             return base_url
@@ -90,9 +92,14 @@ class JsonApiConnector:
 
     def _extract_items(self, payload: Any, path: str) -> Any:
         value: Any = payload
-        for part in path.split("."):
-            if not part:
-                continue
+        parts = [part for part in path.split(".") if part]
+        if not parts:
+            return value
+        for index in range(len(parts)):
+            remainder = ".".join(parts[index:])
+            if isinstance(value, dict) and remainder in value:
+                return value[remainder]
+            part = parts[index]
             if isinstance(value, dict):
                 value = value.get(part)
             elif isinstance(value, list) and part.isdigit() and int(part) < len(value):
@@ -101,10 +108,31 @@ class JsonApiConnector:
                 return None
         return value
 
-    def _parse_item(self, profile: SourceProfile, item: dict[str, Any], root_payload: Any | None = None) -> dict[str, str]:
+    def _coerce_items(self, items: Any, key_field: str | None = None) -> list[Any] | Any:
+        if isinstance(items, list):
+            return items
+        if isinstance(items, dict) and key_field:
+            coerced: list[dict[str, Any]] = []
+            for key, value in items.items():
+                if isinstance(value, dict):
+                    row = dict(value)
+                    row[key_field] = key
+                else:
+                    row = {key_field: key, "value": value}
+                coerced.append(row)
+            return coerced
+        return items
+
+    def _parse_item(
+        self,
+        profile: SourceProfile,
+        item: dict[str, Any],
+        root_payload: Any | None = None,
+        context: dict[str, str] | None = None,
+    ) -> dict[str, str]:
         parsed: dict[str, str] = {}
         for target_field, source_path in profile.json_field_paths.items():
-            value = self._extract_field_value(item, source_path, root_payload=root_payload)
+            value = self._extract_field_value(item, source_path, root_payload=root_payload, context=context)
             if value in (None, "", [], {}):
                 continue
             if isinstance(value, list):
@@ -126,14 +154,22 @@ class JsonApiConnector:
                 parsed[field] = self._clean_text(parsed[field])
         return parsed
 
-    def _extract_field_value(self, item: dict[str, Any], path_expression: str, root_payload: Any | None = None) -> Any:
+    def _extract_field_value(
+        self,
+        item: dict[str, Any],
+        path_expression: str,
+        root_payload: Any | None = None,
+        context: dict[str, str] | None = None,
+    ) -> Any:
         for candidate in path_expression.split("|"):
             candidate = candidate.strip()
             if not candidate:
                 continue
             if candidate.startswith("literal:"):
                 return candidate.removeprefix("literal:")
-            if candidate.startswith("$root.") and root_payload is not None:
+            if candidate.startswith("$context.") and context is not None:
+                value = context.get(candidate.removeprefix("$context."))
+            elif candidate.startswith("$root.") and root_payload is not None:
                 value = self._extract_items(root_payload, candidate.removeprefix("$root."))
             else:
                 value = self._extract_items(item, candidate)

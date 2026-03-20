@@ -83,6 +83,44 @@ class JsonApiConnectorTests(unittest.TestCase):
         self.assertEqual(parsed['published_at'], '2026-01-29')
         self.assertEqual(parsed['metric_value'], '3.92')
 
+    def test_dict_items_can_be_coerced_with_key_field(self) -> None:
+        items = {
+            '2026-03-18': {'4. close': '251.6000', '5. volume': '5177047'},
+            '2026-03-17': {'4. close': '253.3500', '5. volume': '3774387'},
+        }
+        coerced = JsonApiConnector()._coerce_items(items, key_field='trading_date')
+        self.assertEqual(len(coerced), 2)
+        self.assertEqual(coerced[0]['trading_date'], '2026-03-18')
+        self.assertEqual(coerced[0]['4. close'], '251.6000')
+
+    def test_parse_json_item_supports_context_fields(self) -> None:
+        profile = SourceProfile(
+            source_id='alpha_vantage_demo_daily_quotes',
+            domain='finance',
+            connector_kind='json_api',
+            source_type='public_finance_api',
+            source_label='Alpha Vantage Demo Daily Quotes',
+            base_url='https://www.alphavantage.co',
+            first_page_url='https://www.alphavantage.co/query',
+            source_channel='api',
+            max_items_per_fetch=10,
+            json_items_path='Time Series (Daily)',
+            json_item_key_field='trading_date',
+            json_field_paths={
+                'symbol': '$context.target',
+                'published_at': 'trading_date',
+                'metric_value': '4. close',
+            },
+        )
+        item = {
+            'trading_date': '2026-03-18',
+            '4. close': '251.6000',
+        }
+        parsed = JsonApiConnector()._parse_item(profile, item, context={'target': 'IBM'})
+        self.assertEqual(parsed['symbol'], 'IBM')
+        self.assertEqual(parsed['published_at'], '2026-03-18')
+        self.assertEqual(parsed['metric_value'], '251.6000')
+
     def test_request_context_uses_topic_terms(self) -> None:
         profile = SourceProfile(
             source_id='hn_algolia_company_story_search',
