@@ -181,6 +181,34 @@ class JsonApiConnectorTests(unittest.TestCase):
 
         self.assertEqual(matched_topics(profile, payload, task), ['tech_stack_engineering'])
 
+    def test_company_intel_matched_topics_can_use_source_type_and_title_hints(self) -> None:
+        profile = SourceProfile(
+            source_id='qianxin_news',
+            domain='company_intel',
+            connector_kind='regex_html_list',
+            source_type='official_company_news',
+            source_label='Qianxin News',
+            base_url='https://www.qianxin.com',
+            first_page_url='https://www.qianxin.com/news/list',
+            item_pattern='dummy',
+            text_match_fields=['title', 'summary'],
+        )
+        task = TaskSpec.from_dict({
+            'task_id': 'company-intel-001',
+            'domain': 'company_intel',
+            'targets': [{'type': 'company', 'value': '奇安信'}],
+            'topic_scope': ['company_profile', 'product_update', 'tech_blog'],
+            'time_range': {'start': '2025-09-01T00:00:00', 'end': '2026-03-18T00:00:00', 'timezone': 'UTC'},
+            'source_policy': {'selection_mode': 'explicit', 'whitelist': ['qianxin_news'], 'allow_html': True, 'allow_rss': False, 'allow_api': False},
+        })
+        payload = {
+            'title': '奇安信发布“龙虾安全伴侣”，破解企业“想用不敢用”难题',
+            'summary': '依托 OpenClaw 与 SAFESKILL 平台提供新的智能体安全方案。',
+            'published_at': '2026-03-16',
+        }
+
+        self.assertEqual(matched_topics(profile, payload, task), ['product_update', 'tech_blog'])
+
     def test_profile_validation_rejects_incomplete_json_api_profile(self) -> None:
         with self.assertRaises(SourceProfileValidationError):
             SourceProfile(

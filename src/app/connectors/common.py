@@ -6,6 +6,46 @@ from app.models.source_profile import SourceProfile
 from app.models.task_spec import TaskSpec
 
 
+_COMPANY_INTEL_TOPIC_HINTS = {
+    'company_profile': (
+        '报告',
+        '研究',
+        '市场',
+        '排名',
+        '领跑',
+        '第一',
+        '推荐',
+        'gartner',
+        'idc',
+        '赛迪',
+        'marketglance',
+        'quadrant',
+    ),
+    'product_update': (
+        '升级公告',
+        '产品公告',
+        '更新通告',
+        '补丁',
+        '发布',
+        '发布会',
+        '上线',
+        '推出',
+    ),
+    'tech_blog': (
+        '指南',
+        '方案',
+        '平台',
+        '技术',
+        '生态',
+        '智能体',
+        '实践',
+        'openclaw',
+        'safeskill',
+        'ngsoc',
+    ),
+}
+
+
 def build_request_context(profile: SourceProfile, task: TaskSpec, page: int = 1) -> dict[str, str]:
     targets = [str(target.get('value', '')).strip() for target in task.targets if str(target.get('value', '')).strip()]
     topics = [str(topic).strip() for topic in task.topic_scope if str(topic).strip()]
@@ -70,6 +110,7 @@ def matched_topics(profile: SourceProfile, payload: dict[str, Any], task: TaskSp
         topic_terms = [term.lower() for term in _resolve_topic_terms_for_topic(profile, topic_name)]
         if topic_terms and any(term in haystack for term in topic_terms):
             matched.append(topic_name)
+    matched.extend(_domain_specific_topics(profile, payload, task, haystack))
     return _dedupe_preserve_order(matched)
 
 
@@ -82,6 +123,39 @@ def build_haystack(profile: SourceProfile, payload: dict[str, Any]) -> str:
             continue
         values.append(str(value))
     return ' '.join(values).lower()
+
+
+def _domain_specific_topics(profile: SourceProfile, payload: dict[str, Any], task: TaskSpec, haystack: str) -> list[str]:
+    if task.domain != 'company_intel':
+        return []
+
+    allowed = {str(topic).strip() for topic in task.topic_scope if str(topic).strip()}
+    source_type = str(profile.source_type or '').strip().lower()
+    source_tag = str(payload.get('tag', payload.get('category', '')) or '').strip().lower()
+    title = str(payload.get('title', '') or '').strip().lower()
+    summary = str(payload.get('summary', '') or '').strip().lower()
+    combined = ' '.join(part for part in (haystack, source_tag, source_type, title, summary) if part)
+    matched: list[str] = []
+
+    if 'company_profile' in allowed and (
+        source_type == 'official_company_report'
+        or any(hint in combined for hint in _COMPANY_INTEL_TOPIC_HINTS['company_profile'])
+    ):
+        matched.append('company_profile')
+
+    if 'product_update' in allowed and (
+        source_type == 'official_company_update'
+        or any(hint in combined for hint in _COMPANY_INTEL_TOPIC_HINTS['product_update'])
+    ):
+        matched.append('product_update')
+
+    if 'tech_blog' in allowed and (
+        source_type == 'official_company_news'
+        or any(hint in combined for hint in _COMPANY_INTEL_TOPIC_HINTS['tech_blog'])
+    ):
+        matched.append('tech_blog')
+
+    return matched
 
 
 def _dedupe_preserve_order(values: list[str]) -> list[str]:

@@ -85,7 +85,7 @@ class RssFeedConnector:
                 if target_field == "summary":
                     raw_description = text
         if "published_at" in parsed:
-            parsed["published_at"] = self._parse_date(parsed["published_at"]) or ""
+            parsed["published_at"] = self._parse_date(parsed["published_at"]) or fallback_date or ""
         elif fallback_date:
             parsed["published_at"] = fallback_date
         if profile.decode_html_entities:

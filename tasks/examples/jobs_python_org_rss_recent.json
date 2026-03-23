@@ -1,4 +1,4 @@
-﻿{
+{
   "task_id": "job-python-org-rss-001",
   "scenario_template": "job_hunt_engineering_basic",
   "domain": "jobs",
@@ -11,7 +11,7 @@
   "topic_scope": ["backend"],
   "time_range": {
     "start": "2026-02-01T00:00:00",
-    "end": "2026-03-20T23:59:59",
+    "end": "2026-12-31T23:59:59",
     "timezone": "UTC"
   },
   "source_policy": {
