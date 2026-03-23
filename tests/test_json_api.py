@@ -1,9 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import unittest
 
+from app.connectors.common import matched_topics, resolve_topic_terms
 from app.connectors.json_api import JsonApiConnector
-from app.connectors.common import resolve_topic_terms
 from app.models.source_profile import SourceProfile, SourceProfileValidationError
 from app.models.task_spec import TaskSpec
 
@@ -145,6 +145,41 @@ class JsonApiConnectorTests(unittest.TestCase):
             'source_policy': {'selection_mode': 'explicit', 'whitelist': ['hn_algolia_company_story_search'], 'allow_html': False, 'allow_rss': False, 'allow_api': True},
         })
         self.assertEqual(resolve_topic_terms(profile, task), ['api', 'model', 'sdk'])
+
+    def test_matched_topics_returns_only_topics_hit_by_the_record(self) -> None:
+        profile = SourceProfile(
+            source_id='hn_algolia_company_story_search',
+            domain='public_sentiment',
+            connector_kind='json_api',
+            source_type='public_forum_api',
+            source_label='HN Algolia',
+            base_url='https://hn.algolia.com',
+            first_page_url='https://hn.algolia.com/api/v1/search_by_date',
+            source_channel='api',
+            max_items_per_fetch=50,
+            json_items_path='hits',
+            json_field_paths={'title': 'title', 'summary': 'story_text', 'published_at': 'created_at'},
+            text_match_fields=['title', 'summary'],
+            topic_terms={
+                'tech_stack_engineering': ['api', 'sdk'],
+                'management_culture': ['leadership', 'culture'],
+            },
+        )
+        task = TaskSpec.from_dict({
+            'task_id': 'sentiment-api-002',
+            'domain': 'public_sentiment',
+            'targets': [{'type': 'company', 'value': 'OpenAI'}],
+            'topic_scope': ['tech_stack_engineering', 'management_culture'],
+            'time_range': {'start': '2025-09-01T00:00:00', 'end': '2026-03-18T00:00:00', 'timezone': 'UTC'},
+            'source_policy': {'selection_mode': 'explicit', 'whitelist': ['hn_algolia_company_story_search'], 'allow_html': False, 'allow_rss': False, 'allow_api': True},
+        })
+        payload = {
+            'title': 'OpenAI ships a new API rollout',
+            'summary': 'Developers are discussing the SDK migration plan.',
+            'published_at': '2026-03-18',
+        }
+
+        self.assertEqual(matched_topics(profile, payload, task), ['tech_stack_engineering'])
 
     def test_profile_validation_rejects_incomplete_json_api_profile(self) -> None:
         with self.assertRaises(SourceProfileValidationError):

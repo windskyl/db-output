@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import sqlite3
@@ -94,6 +94,99 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(instrument_row[4], 'NYSE')
             self.assertEqual(instrument_row[5], 'USD')
             self.assertEqual(instrument_row[6], 'alpha_vantage_demo_earnings')
+
+    def test_public_sentiment_records_are_aggregated_into_topic_table(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            artifacts = RunArtifacts(
+                task_id='public-sentiment-openai-001',
+                domain='public_sentiment',
+                raw_file=str(base / 'raw.jsonl.gz'),
+                normalized_file=str(base / 'normalized.jsonl.gz'),
+                sqlite_file=str(base / 'result.sqlite'),
+                quality_report_file=str(base / 'quality_report.json'),
+                run_report_file=str(base / 'run_report.json'),
+            )
+            records = [
+                NormalizedRecord(
+                    task_id='public-sentiment-openai-001',
+                    domain='public_sentiment',
+                    record_id='public-sentiment-openai-001-hn-1',
+                    dedupe_key='hn:2026-03-18:OpenAI API rollout',
+                    source_id='hn_algolia_company_story_search',
+                    source_type='public_forum_api',
+                    source_label='HN Algolia',
+                    source_tag='story',
+                    source_url='https://news.ycombinator.com/item?id=1',
+                    published_at='2026-03-18',
+                    collected_at='2026-03-20T10:00:00+00:00',
+                    primary_entity='OpenAI',
+                    topic_tags=['tech_stack_engineering'],
+                    title='OpenAI API rollout',
+                    content_text='Developers discuss the SDK update.',
+                    relevance_score=0.8,
+                    extra={'matched_topics': ['tech_stack_engineering']},
+                ),
+                NormalizedRecord(
+                    task_id='public-sentiment-openai-001',
+                    domain='public_sentiment',
+                    record_id='public-sentiment-openai-001-hn-2',
+                    dedupe_key='hn:2026-03-19:OpenAI leadership memo',
+                    source_id='hn_algolia_company_story_search',
+                    source_type='public_forum_api',
+                    source_label='HN Algolia',
+                    source_tag='story',
+                    source_url='https://news.ycombinator.com/item?id=2',
+                    published_at='2026-03-19',
+                    collected_at='2026-03-20T10:05:00+00:00',
+                    primary_entity='OpenAI',
+                    topic_tags=['tech_stack_engineering', 'management_culture'],
+                    title='OpenAI leadership memo',
+                    content_text='Discussion covers engineering direction and leadership.',
+                    relevance_score=0.82,
+                    extra={'matched_topics': ['tech_stack_engineering', 'management_culture']},
+                ),
+            ]
+            run_summary = {
+                'task_id': 'public-sentiment-openai-001',
+                'domain': 'public_sentiment',
+                'scenario_template': 'company_sentiment_tracking_basic',
+                'status': 'success',
+                'raw_count': 2,
+                'normalized_count': 2,
+                'output_count': 2,
+                'quality_report': {'task_id': 'public-sentiment-openai-001', 'domain': 'public_sentiment', 'output_count': 2},
+            }
+
+            SQLiteWriter().write(run_summary, records, artifacts)
+
+            connection = sqlite3.connect(artifacts.sqlite_file)
+            try:
+                post_count = connection.execute('SELECT COUNT(*) FROM core_sentiment_posts').fetchone()[0]
+                topic_rows = connection.execute(
+                    'SELECT primary_entity, topic_name, post_count, first_published_at, last_published_at, sample_title, source_ids_json '
+                    'FROM core_sentiment_topics ORDER BY topic_name'
+                ).fetchall()
+            finally:
+                connection.close()
+
+            self.assertEqual(post_count, 2)
+            self.assertEqual(len(topic_rows), 2)
+            self.assertEqual(topic_rows[0][0], 'OpenAI')
+            self.assertEqual(topic_rows[0][1], 'management_culture')
+            self.assertEqual(topic_rows[0][2], 1)
+            self.assertEqual(topic_rows[0][3], '2026-03-19')
+            self.assertEqual(topic_rows[0][4], '2026-03-19')
+            self.assertEqual(topic_rows[0][5], 'OpenAI leadership memo')
+            self.assertEqual(json.loads(topic_rows[0][6]), ['hn_algolia_company_story_search'])
+
+            self.assertEqual(topic_rows[1][0], 'OpenAI')
+            self.assertEqual(topic_rows[1][1], 'tech_stack_engineering')
+            self.assertEqual(topic_rows[1][2], 2)
+            self.assertEqual(topic_rows[1][3], '2026-03-18')
+            self.assertEqual(topic_rows[1][4], '2026-03-19')
+            self.assertEqual(topic_rows[1][5], 'OpenAI leadership memo')
+            self.assertEqual(json.loads(topic_rows[1][6]), ['hn_algolia_company_story_search'])
 
 
 if __name__ == '__main__':

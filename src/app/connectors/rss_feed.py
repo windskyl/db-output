@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import hashlib
 import html
@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from datetime import UTC, date, datetime
 from email.utils import parsedate_to_datetime
 
-from app.connectors.common import matches_relevance
+from app.connectors.common import matched_topics, matches_relevance
 from app.fetching.client import FetchClient
 from app.fetching.limiter import RateLimiter
 from app.fetching.models import FetchRequest
@@ -48,6 +48,7 @@ class RssFeedConnector:
             published_date = date.fromisoformat(published_at[:10])
             if published_date < start_date or published_date > end_date:
                 continue
+            parsed["matched_topics"] = matched_topics(profile, parsed, task)
             if not matches_relevance(profile, parsed, task, scoped_entity=scoped_entity):
                 continue
             source_item_id = parsed.get("source_item_id") or parsed.get("guid") or hashlib.sha256((parsed.get("url", "") + parsed.get("title", "")).encode("utf-8")).hexdigest()

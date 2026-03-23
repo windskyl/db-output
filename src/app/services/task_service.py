@@ -251,6 +251,7 @@ class TaskService:
             published_at = str(payload.get("published_at", task.time_range.end))
             primary_entity = self._primary_entity(task, payload)
             source_tag = str(payload.get("tag", payload.get("category", "")))
+            topic_tags = self._resolve_record_topics(task, payload)
             record_id = f"{task.task_id}-{raw.source_id}-{index}"
             extra = {
                 "scenario_template": task.scenario_template,
@@ -259,9 +260,11 @@ class TaskService:
             for key in ("source_item_id", "company", "location", "category", "guid", "author"):
                 if key in payload:
                     extra[key] = payload[key]
+            if "matched_topics" in payload:
+                extra["matched_topics"] = topic_tags
             if task.domain == "finance":
                 for key, value in payload.items():
-                    if key in {"title", "summary", "published_at", "url", "tag", "category"}:
+                    if key in {"title", "summary", "published_at", "url", "tag", "category", "matched_topics"}:
                         continue
                     if value is None or isinstance(value, (dict, list)):
                         continue
@@ -281,7 +284,7 @@ class TaskService:
                     collected_at=raw.fetched_at,
                     primary_entity=primary_entity,
                     entity_tags=[primary_entity],
-                    topic_tags=list(task.topic_scope),
+                    topic_tags=topic_tags,
                     title=title,
                     content_text=summary or "Generated from the validated task spec so the pipeline can be tested locally.",
                     relevance_score=max(task.relevance_policy.min_relevance_score, 0.7),
@@ -388,6 +391,31 @@ class TaskService:
             return str(payload["symbol"])
         primary_target = task.targets[0].get("value") or task.targets[0].get("type") or "unknown"
         return str(primary_target)
+
+    def _resolve_record_topics(self, task: TaskSpec, payload: dict[str, Any]) -> list[str]:
+        raw_topics = payload.get("matched_topics")
+        if raw_topics is None:
+            return [str(topic).strip() for topic in task.topic_scope if str(topic).strip()]
+
+        if isinstance(raw_topics, str):
+            candidates = [raw_topics]
+        elif isinstance(raw_topics, (list, tuple, set)):
+            candidates = [str(topic) for topic in raw_topics]
+        else:
+            return []
+
+        allowed = {str(topic).strip() for topic in task.topic_scope if str(topic).strip()}
+        seen: set[str] = set()
+        resolved: list[str] = []
+        for candidate in candidates:
+            topic = candidate.strip()
+            if not topic or topic in seen:
+                continue
+            if allowed and topic not in allowed:
+                continue
+            seen.add(topic)
+            resolved.append(topic)
+        return resolved
 
     def _build_seed_raw_record(self, task: TaskSpec) -> RawRecord:
         seed_payload = {

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import hashlib
 import html
@@ -6,7 +6,7 @@ import re
 import urllib.parse
 from datetime import UTC, date, datetime
 
-from app.connectors.common import build_request_context, format_template, matches_relevance
+from app.connectors.common import build_request_context, format_template, matched_topics, matches_relevance
 from app.fetching.client import FetchClient
 from app.fetching.limiter import RateLimiter
 from app.fetching.models import FetchRequest
@@ -59,6 +59,7 @@ class RegexHtmlListConnector:
                     continue
                 if published_date > end_date:
                     continue
+                item["matched_topics"] = matched_topics(profile, item, task)
                 if not matches_relevance(profile, item, task, scoped_entity=scoped_entity):
                     continue
                 item_source_id = str(item.get("source_item_id") or hashlib.sha256((item.get("url", "") + item.get("title", "")).encode("utf-8")).hexdigest())

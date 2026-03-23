@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
@@ -32,13 +32,7 @@ def format_template(template: str, context: dict[str, str]) -> str:
 def resolve_topic_terms(profile: SourceProfile, task: TaskSpec) -> list[str]:
     terms: list[str] = []
     for topic in task.topic_scope:
-        mapped_terms = profile.topic_terms.get(topic)
-        if mapped_terms:
-            terms.extend(str(term).strip() for term in mapped_terms if str(term).strip())
-        else:
-            fallback = str(topic).replace('_', ' ').strip()
-            if fallback:
-                terms.append(fallback)
+        terms.extend(_resolve_topic_terms_for_topic(profile, str(topic)))
     return _dedupe_preserve_order(terms)
 
 
@@ -57,11 +51,26 @@ def matches_targets(profile: SourceProfile, payload: dict[str, Any], task: TaskS
 
 
 def matches_topics(profile: SourceProfile, payload: dict[str, Any], task: TaskSpec) -> bool:
-    haystack = build_haystack(profile, payload)
-    topic_terms = [term.lower() for term in resolve_topic_terms(profile, task)]
-    if not topic_terms:
+    if not task.topic_scope:
         return True
-    return any(term in haystack for term in topic_terms)
+    return bool(matched_topics(profile, payload, task))
+
+
+def matched_topics(profile: SourceProfile, payload: dict[str, Any], task: TaskSpec) -> list[str]:
+    existing = payload.get('matched_topics')
+    if existing is not None:
+        return _coerce_topics(existing)
+
+    haystack = build_haystack(profile, payload)
+    matched: list[str] = []
+    for topic in task.topic_scope:
+        topic_name = str(topic).strip()
+        if not topic_name:
+            continue
+        topic_terms = [term.lower() for term in _resolve_topic_terms_for_topic(profile, topic_name)]
+        if topic_terms and any(term in haystack for term in topic_terms):
+            matched.append(topic_name)
+    return _dedupe_preserve_order(matched)
 
 
 def build_haystack(profile: SourceProfile, payload: dict[str, Any]) -> str:
@@ -85,3 +94,21 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
         seen.add(key)
         result.append(value)
     return result
+
+
+def _resolve_topic_terms_for_topic(profile: SourceProfile, topic: str) -> list[str]:
+    mapped_terms = profile.topic_terms.get(topic)
+    if mapped_terms:
+        return [str(term).strip() for term in mapped_terms if str(term).strip()]
+    fallback = str(topic).replace('_', ' ').strip()
+    return [fallback] if fallback else []
+
+
+def _coerce_topics(value: Any) -> list[str]:
+    if isinstance(value, str):
+        values = [value]
+    elif isinstance(value, (list, tuple, set)):
+        values = [str(item) for item in value]
+    else:
+        return []
+    return _dedupe_preserve_order([item.strip() for item in values if item and str(item).strip()])

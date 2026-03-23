@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import sqlite3
@@ -140,7 +140,21 @@ class SQLiteWriter:
                 ");"
             ),
             "company_intel": f"CREATE TABLE IF NOT EXISTS core_company_events ({common_columns});",
-            "public_sentiment": f"CREATE TABLE IF NOT EXISTS core_sentiment_posts ({common_columns}, content_text TEXT NOT NULL);",
+            "public_sentiment": (
+                f"CREATE TABLE IF NOT EXISTS core_sentiment_posts ({common_columns}, content_text TEXT NOT NULL);"
+                "CREATE TABLE IF NOT EXISTS core_sentiment_topics ("
+                "topic_record_id TEXT PRIMARY KEY,"
+                "primary_entity TEXT NOT NULL,"
+                "topic_name TEXT NOT NULL,"
+                "post_count INTEGER NOT NULL,"
+                "first_published_at TEXT NOT NULL,"
+                "last_published_at TEXT NOT NULL,"
+                "sample_record_id TEXT NOT NULL,"
+                "sample_title TEXT NOT NULL,"
+                "source_ids_json TEXT NOT NULL,"
+                "extra_json TEXT NOT NULL"
+                ");"
+            ),
         }
         connection.executescript(statements[domain])
 
@@ -176,6 +190,7 @@ class SQLiteWriter:
                     for r in records
                 ],
             )
+            self._insert_sentiment_topics(connection, records)
             return
         table_name = {
             "jobs": "core_jobs_postings",
@@ -280,3 +295,80 @@ class SQLiteWriter:
             """,
             metric_rows,
         )
+
+    def _insert_sentiment_topics(self, connection: sqlite3.Connection, records: list[NormalizedRecord]) -> None:
+        topic_rows: dict[str, dict[str, object]] = {}
+        for record in records:
+            topic_names = self._sentiment_topic_names(record)
+            for topic_name in topic_names:
+                topic_record_id = f"{record.primary_entity}::{topic_name}"
+                row = topic_rows.get(topic_record_id)
+                if row is None:
+                    row = {
+                        "topic_record_id": topic_record_id,
+                        "primary_entity": record.primary_entity,
+                        "topic_name": topic_name,
+                        "post_count": 0,
+                        "first_published_at": record.published_at,
+                        "last_published_at": record.published_at,
+                        "sample_record_id": record.record_id,
+                        "sample_title": record.title,
+                        "source_ids": set(),
+                        "sample_source_url": record.source_url,
+                    }
+                    topic_rows[topic_record_id] = row
+                row["post_count"] = int(row["post_count"]) + 1
+                source_ids = row["source_ids"]
+                if isinstance(source_ids, set):
+                    source_ids.add(record.source_id)
+                if record.published_at < str(row["first_published_at"]):
+                    row["first_published_at"] = record.published_at
+                if record.published_at >= str(row["last_published_at"]):
+                    row["last_published_at"] = record.published_at
+                    row["sample_record_id"] = record.record_id
+                    row["sample_title"] = record.title
+                    row["sample_source_url"] = record.source_url
+        if not topic_rows:
+            return
+        connection.executemany(
+            """
+            INSERT OR REPLACE INTO core_sentiment_topics (
+                topic_record_id, primary_entity, topic_name, post_count,
+                first_published_at, last_published_at, sample_record_id,
+                sample_title, source_ids_json, extra_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    str(row["topic_record_id"]),
+                    str(row["primary_entity"]),
+                    str(row["topic_name"]),
+                    int(row["post_count"]),
+                    str(row["first_published_at"]),
+                    str(row["last_published_at"]),
+                    str(row["sample_record_id"]),
+                    str(row["sample_title"]),
+                    json.dumps(sorted(row["source_ids"]), ensure_ascii=False),
+                    json.dumps({"sample_source_url": row["sample_source_url"]}, ensure_ascii=False),
+                )
+                for row in topic_rows.values()
+            ],
+        )
+
+    def _sentiment_topic_names(self, record: NormalizedRecord) -> list[str]:
+        raw_topics = record.extra.get("matched_topics", record.topic_tags)
+        if isinstance(raw_topics, str):
+            values = [raw_topics]
+        elif isinstance(raw_topics, (list, tuple, set)):
+            values = [str(topic) for topic in raw_topics]
+        else:
+            return []
+        seen: set[str] = set()
+        result: list[str] = []
+        for value in values:
+            topic = value.strip()
+            if not topic or topic in seen:
+                continue
+            seen.add(topic)
+            result.append(topic)
+        return result
