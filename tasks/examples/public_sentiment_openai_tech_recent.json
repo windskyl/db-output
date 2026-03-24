@@ -1,4 +1,4 @@
-﻿{
+{
   "task_id": "public-sentiment-openai-tech-001",
   "scenario_template": "company_sentiment_tracking_basic",
   "domain": "public_sentiment",
@@ -11,7 +11,7 @@
   "topic_scope": ["tech_stack_engineering"],
   "time_range": {
     "start": "2025-09-01T00:00:00",
-    "end": "2026-03-18T23:59:59",
+    "end": "2026-12-31T23:59:59",
     "timezone": "UTC"
   },
   "source_policy": {

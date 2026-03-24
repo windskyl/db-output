@@ -405,8 +405,8 @@ class SQLiteWriterTests(unittest.TestCase):
                     collected_at='2026-03-20T10:00:00+00:00',
                     primary_entity='OpenAI',
                     topic_tags=['tech_stack_engineering'],
-                    title='OpenAI API rollout',
-                    content_text='Developers discuss the SDK update.',
+                    title='OpenAI shipped a great API update',
+                    content_text='Developers love the helpful SDK improvements and better docs.',
                     relevance_score=0.8,
                     extra={'matched_topics': ['tech_stack_engineering']},
                 ),
@@ -424,8 +424,8 @@ class SQLiteWriterTests(unittest.TestCase):
                     collected_at='2026-03-20T10:05:00+00:00',
                     primary_entity='OpenAI',
                     topic_tags=['tech_stack_engineering', 'management_culture'],
-                    title='OpenAI leadership memo',
-                    content_text='Discussion covers engineering direction and leadership.',
+                    title='OpenAI is under fire from critics again',
+                    content_text='Critics call the latest remarks bad and raise serious concerns.',
                     relevance_score=0.82,
                     extra={'matched_topics': ['tech_stack_engineering', 'management_culture']},
                 ),
@@ -446,30 +446,44 @@ class SQLiteWriterTests(unittest.TestCase):
             connection = sqlite3.connect(artifacts.sqlite_file)
             try:
                 post_count = connection.execute('SELECT COUNT(*) FROM core_sentiment_posts').fetchone()[0]
+                post_rows = connection.execute(
+                    'SELECT record_id, sentiment_label, sentiment_score FROM core_sentiment_posts ORDER BY record_id'
+                ).fetchall()
                 topic_rows = connection.execute(
-                    'SELECT primary_entity, topic_name, post_count, first_published_at, last_published_at, sample_title, source_ids_json '
+                    'SELECT primary_entity, topic_name, post_count, positive_count, neutral_count, negative_count, average_sentiment_score, sample_title, source_ids_json '
                     'FROM core_sentiment_topics ORDER BY topic_name'
                 ).fetchall()
             finally:
                 connection.close()
 
             self.assertEqual(post_count, 2)
+            self.assertEqual(post_rows[0][0], 'public-sentiment-openai-001-hn-1')
+            self.assertEqual(post_rows[0][1], 'positive')
+            self.assertGreater(post_rows[0][2], 0.0)
+            self.assertEqual(post_rows[1][0], 'public-sentiment-openai-001-hn-2')
+            self.assertEqual(post_rows[1][1], 'negative')
+            self.assertLess(post_rows[1][2], 0.0)
+
             self.assertEqual(len(topic_rows), 2)
             self.assertEqual(topic_rows[0][0], 'OpenAI')
             self.assertEqual(topic_rows[0][1], 'management_culture')
             self.assertEqual(topic_rows[0][2], 1)
-            self.assertEqual(topic_rows[0][3], '2026-03-19')
-            self.assertEqual(topic_rows[0][4], '2026-03-19')
-            self.assertEqual(topic_rows[0][5], 'OpenAI leadership memo')
-            self.assertEqual(json.loads(topic_rows[0][6]), ['hn_algolia_company_story_search'])
+            self.assertEqual(topic_rows[0][3], 0)
+            self.assertEqual(topic_rows[0][4], 0)
+            self.assertEqual(topic_rows[0][5], 1)
+            self.assertLess(topic_rows[0][6], 0.0)
+            self.assertEqual(topic_rows[0][7], 'OpenAI is under fire from critics again')
+            self.assertEqual(json.loads(topic_rows[0][8]), ['hn_algolia_company_story_search'])
 
             self.assertEqual(topic_rows[1][0], 'OpenAI')
             self.assertEqual(topic_rows[1][1], 'tech_stack_engineering')
             self.assertEqual(topic_rows[1][2], 2)
-            self.assertEqual(topic_rows[1][3], '2026-03-18')
-            self.assertEqual(topic_rows[1][4], '2026-03-19')
-            self.assertEqual(topic_rows[1][5], 'OpenAI leadership memo')
-            self.assertEqual(json.loads(topic_rows[1][6]), ['hn_algolia_company_story_search'])
+            self.assertEqual(topic_rows[1][3], 1)
+            self.assertEqual(topic_rows[1][4], 0)
+            self.assertEqual(topic_rows[1][5], 1)
+            self.assertEqual(topic_rows[1][6], 0.0)
+            self.assertEqual(topic_rows[1][7], 'OpenAI is under fire from critics again')
+            self.assertEqual(json.loads(topic_rows[1][8]), ['hn_algolia_company_story_search'])
 
 
 if __name__ == '__main__':

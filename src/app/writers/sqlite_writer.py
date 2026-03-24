@@ -40,6 +40,37 @@ _COMPANY_DOCUMENT_MARKERS = (
     '\u901a\u544a',
 )
 
+_SENTIMENT_POSITIVE_PATTERNS = (
+    r'\bgood\b',
+    r'\bgreat\b',
+    r'\bbetter\b',
+    r'\bimprov(?:e|es|ed|ing)\b',
+    r'\bhelpful\b',
+    r'\buseful\b',
+    r'\binnovative\b',
+    r'\bpowerful\b',
+    r'\bfast\b',
+    r'\blove\b',
+    r'\bsuccess(?:ful)?\b',
+    r'\bleading\b',
+    r'\bbest\b',
+)
+
+_SENTIMENT_NEGATIVE_PATTERNS = (
+    r'under fire',
+    r'\bcritic(?:s|ism)?\b',
+    r'\bdisgusting\b',
+    r'\bbad\b',
+    r'\bworse\b',
+    r'\bproblem(?:s)?\b',
+    r'\brisk(?:s)?\b',
+    r'\bunsafe\b',
+    r'\bfail(?:ure|ed|ing)?\b',
+    r'cut back',
+    r'\bconcern(?:s)?\b',
+    r'\bissue(?:s)?\b',
+)
+
 _JOB_SKILL_PATTERNS = (
     ('Python', 'language', (r'\bpython\b',)),
     ('Django', 'framework', (r'\bdjango\b',)),
@@ -253,12 +284,16 @@ class SQLiteWriter:
                 ");"
             ),
             "public_sentiment": (
-                f"CREATE TABLE IF NOT EXISTS core_sentiment_posts ({common_columns}, content_text TEXT NOT NULL);"
+                f"CREATE TABLE IF NOT EXISTS core_sentiment_posts ({common_columns}, content_text TEXT NOT NULL, sentiment_label TEXT NOT NULL, sentiment_score REAL NOT NULL);"
                 "CREATE TABLE IF NOT EXISTS core_sentiment_topics ("
                 "topic_record_id TEXT PRIMARY KEY,"
                 "primary_entity TEXT NOT NULL,"
                 "topic_name TEXT NOT NULL,"
                 "post_count INTEGER NOT NULL,"
+                "positive_count INTEGER NOT NULL,"
+                "neutral_count INTEGER NOT NULL,"
+                "negative_count INTEGER NOT NULL,"
+                "average_sentiment_score REAL NOT NULL,"
                 "first_published_at TEXT NOT NULL,"
                 "last_published_at TEXT NOT NULL,"
                 "sample_record_id TEXT NOT NULL,"
@@ -274,33 +309,38 @@ class SQLiteWriter:
         if not records:
             return
         if domain == "public_sentiment":
+            post_rows = []
+            for record in records:
+                sentiment_label, sentiment_score = self._classify_sentiment(record)
+                post_rows.append(
+                    (
+                        record.record_id,
+                        record.primary_entity,
+                        record.title,
+                        record.source_id,
+                        record.source_type,
+                        record.source_label,
+                        record.source_tag,
+                        record.source_url,
+                        record.published_at,
+                        record.collected_at,
+                        record.relevance_score,
+                        json.dumps(record.topic_tags, ensure_ascii=False),
+                        json.dumps(record.extra, ensure_ascii=False),
+                        record.content_text,
+                        sentiment_label,
+                        sentiment_score,
+                    )
+                )
             connection.executemany(
                 """
                 INSERT OR REPLACE INTO core_sentiment_posts (
                     record_id, primary_entity, title, source_id, source_type, source_label, source_tag,
                     source_url, published_at, collected_at, relevance_score,
-                    topic_tags_json, extra_json, content_text
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    topic_tags_json, extra_json, content_text, sentiment_label, sentiment_score
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                [
-                    (
-                        r.record_id,
-                        r.primary_entity,
-                        r.title,
-                        r.source_id,
-                        r.source_type,
-                        r.source_label,
-                        r.source_tag,
-                        r.source_url,
-                        r.published_at,
-                        r.collected_at,
-                        r.relevance_score,
-                        json.dumps(r.topic_tags, ensure_ascii=False),
-                        json.dumps(r.extra, ensure_ascii=False),
-                        r.content_text,
-                    )
-                    for r in records
-                ],
+                post_rows,
             )
             self._insert_sentiment_topics(connection, records)
             return
@@ -627,6 +667,7 @@ class SQLiteWriter:
     def _insert_sentiment_topics(self, connection: sqlite3.Connection, records: list[NormalizedRecord]) -> None:
         topic_rows: dict[str, dict[str, object]] = {}
         for record in records:
+            sentiment_label, sentiment_score = self._classify_sentiment(record)
             topic_names = self._sentiment_topic_names(record)
             for topic_name in topic_names:
                 topic_record_id = f"{record.primary_entity}::{topic_name}"
@@ -637,6 +678,10 @@ class SQLiteWriter:
                         "primary_entity": record.primary_entity,
                         "topic_name": topic_name,
                         "post_count": 0,
+                        "positive_count": 0,
+                        "neutral_count": 0,
+                        "negative_count": 0,
+                        "sentiment_score_sum": 0.0,
                         "first_published_at": record.published_at,
                         "last_published_at": record.published_at,
                         "sample_record_id": record.record_id,
@@ -646,6 +691,8 @@ class SQLiteWriter:
                     }
                     topic_rows[topic_record_id] = row
                 row["post_count"] = int(row["post_count"]) + 1
+                row[f"{sentiment_label}_count"] = int(row[f"{sentiment_label}_count"]) + 1
+                row["sentiment_score_sum"] = float(row["sentiment_score_sum"]) + float(sentiment_score)
                 source_ids = row["source_ids"]
                 if isinstance(source_ids, set):
                     source_ids.add(record.source_id)
@@ -662,9 +709,10 @@ class SQLiteWriter:
             """
             INSERT OR REPLACE INTO core_sentiment_topics (
                 topic_record_id, primary_entity, topic_name, post_count,
+                positive_count, neutral_count, negative_count, average_sentiment_score,
                 first_published_at, last_published_at, sample_record_id,
                 sample_title, source_ids_json, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
@@ -672,6 +720,10 @@ class SQLiteWriter:
                     str(row["primary_entity"]),
                     str(row["topic_name"]),
                     int(row["post_count"]),
+                    int(row["positive_count"]),
+                    int(row["neutral_count"]),
+                    int(row["negative_count"]),
+                    round(float(row["sentiment_score_sum"]) / max(int(row["post_count"]), 1), 4),
                     str(row["first_published_at"]),
                     str(row["last_published_at"]),
                     str(row["sample_record_id"]),
@@ -777,6 +829,19 @@ class SQLiteWriter:
         normalized = re.sub(r'\s+', '', project_name).lower()
         return f"{primary_entity}::{normalized}"
 
+    def _classify_sentiment(self, record: NormalizedRecord) -> tuple[str, float]:
+        text = f"{record.title} {record.content_text}".lower()
+        positive_hits = sum(1 for pattern in _SENTIMENT_POSITIVE_PATTERNS if re.search(pattern, text))
+        negative_hits = sum(1 for pattern in _SENTIMENT_NEGATIVE_PATTERNS if re.search(pattern, text))
+        total_hits = positive_hits + negative_hits
+        if total_hits == 0:
+            return "neutral", 0.0
+        score = round((positive_hits - negative_hits) / total_hits, 4)
+        if score > 0.2:
+            return "positive", score
+        if score < -0.2:
+            return "negative", score
+        return "neutral", score
     def _sentiment_topic_names(self, record: NormalizedRecord) -> list[str]:
         raw_topics = record.extra.get("matched_topics", record.topic_tags)
         if isinstance(raw_topics, str):
