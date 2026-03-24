@@ -378,6 +378,82 @@ class SQLiteWriterTests(unittest.TestCase):
 
             self.assertEqual(row_count, 1)
 
+    def test_company_intel_project_extraction_filters_media_and_article_title_noise(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            artifacts = RunArtifacts(
+                task_id='company-qianxin-noise-001',
+                domain='company_intel',
+                raw_file=str(base / 'raw.jsonl.gz'),
+                normalized_file=str(base / 'normalized.jsonl.gz'),
+                sqlite_file=str(base / 'result.sqlite'),
+                quality_report_file=str(base / 'quality_report.json'),
+                run_report_file=str(base / 'run_report.json'),
+            )
+            records = [
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-news-1',
+                    dedupe_key='qianxin_news:2026-03-10:noise-1',
+                    source_id='qianxin_news',
+                    source_type='official_company_news',
+                    source_label='Qianxin News',
+                    source_tag='',
+                    source_url='https://www.qianxin.com/news/detail?news_id=1',
+                    published_at='2026-03-10',
+                    collected_at='2026-03-20T10:00:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['tech_blog'],
+                    title='\u300a\u4e2d\u56fd\u4f01\u4e1a\u5bb6\u300b\u72ec\u5bb6\u5bf9\u8bdd\u9f50\u5411\u4e1c\uff1a\u4e0d\u60f3\u88ab\u6dd8\u6c70\uff0c\u5c31\u8981\u62e5\u62b1AI',
+                    content_text='\u8fd9\u662f\u4e00\u7bc7\u4ee5\u89c2\u70b9\u4e3a\u4e3b\u7684\u5a92\u4f53\u6587\u7ae0\u3002',
+                    relevance_score=0.7,
+                    extra={},
+                ),
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-news-2',
+                    dedupe_key='qianxin_news:2026-03-11:good-2',
+                    source_id='qianxin_news',
+                    source_type='official_company_news',
+                    source_label='Qianxin News',
+                    source_tag='',
+                    source_url='https://www.qianxin.com/news/detail?news_id=2',
+                    published_at='2026-03-11',
+                    collected_at='2026-03-20T10:01:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['product_update', 'tech_blog'],
+                    title='\u5947\u5b89\u4fe1\u53d1\u5e03\u201c\u9f99\u867e\u5b89\u5168\u4f34\u4fa3\u201d\uff0c\u7834\u89e3\u4f01\u4e1a\u201c\u60f3\u7528\u4e0d\u6562\u7528\u201d\u96be\u9898',
+                    content_text='OpenClaw \u4e0e SAFESKILL \u5e73\u53f0\u63d0\u4f9b\u65b0\u7684\u667a\u80fd\u4f53\u5b89\u5168\u65b9\u6848\u3002',
+                    relevance_score=0.8,
+                    extra={},
+                ),
+            ]
+            run_summary = {
+                'task_id': 'company-qianxin-noise-001',
+                'domain': 'company_intel',
+                'scenario_template': 'company_due_diligence',
+                'status': 'success',
+                'raw_count': 2,
+                'normalized_count': 2,
+                'output_count': 2,
+                'quality_report': {'task_id': 'company-qianxin-noise-001', 'domain': 'company_intel', 'output_count': 2},
+            }
+
+            SQLiteWriter().write(run_summary, records, artifacts)
+
+            connection = sqlite3.connect(artifacts.sqlite_file)
+            try:
+                project_names = [row[0] for row in connection.execute('SELECT project_name FROM core_company_projects ORDER BY project_name').fetchall()]
+            finally:
+                connection.close()
+
+            self.assertIn('OpenClaw', project_names)
+            self.assertIn('SAFESKILL', project_names)
+            self.assertIn('\u9f99\u867e\u5b89\u5168\u4f34\u4fa3', project_names)
+            self.assertNotIn('\u4e2d\u56fd\u4f01\u4e1a\u5bb6', project_names)
+            self.assertNotIn('\u300a\u4e2d\u56fd\u4f01\u4e1a\u5bb6\u300b\u72ec\u5bb6\u5bf9\u8bdd\u9f50\u5411\u4e1c\uff1a\u4e0d\u60f3\u88ab\u6dd8\u6c70\uff0c\u5c31\u8981\u62e5\u62b1AI', project_names)
     def test_public_sentiment_records_are_aggregated_into_topic_table(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)

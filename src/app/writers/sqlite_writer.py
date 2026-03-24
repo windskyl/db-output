@@ -40,6 +40,32 @@ _COMPANY_DOCUMENT_MARKERS = (
     '\u901a\u544a',
 )
 
+_COMPANY_PROJECT_NAME_MARKERS = (
+    '\u5e73\u53f0',
+    '\u7cfb\u7edf',
+    '\u6d4f\u89c8\u5668',
+    '\u65b9\u6848',
+    '\u667a\u80fd\u4f53',
+    '\u4f34\u4fa3',
+    '\u7f51\u5173',
+    '\u9632\u706b\u5899',
+    '\u5f15\u64ce',
+    '\u7ec8\u7aef',
+    '\u5de5\u4f5c\u53f0',
+    '\u9879\u76ee',
+)
+
+_COMPANY_PROJECT_NOISE_MARKERS = (
+    '\u4e2d\u56fd\u4f01\u4e1a\u5bb6',
+    '\u592e\u89c6',
+    '\u8d22\u7ecf',
+    '\u8bc4\u8bba',
+    '\u65b0\u95fb\u8054\u64ad',
+    '\u7ecf\u6d4e\u534a\u5c0f\u65f6',
+    '\u4e24\u4f1a',
+    '\u521b\u5ba2\u6c47',
+)
+
 _SENTIMENT_POSITIVE_PATTERNS = (
     r'\bgood\b',
     r'\bgreat\b',
@@ -775,7 +801,7 @@ class SQLiteWriter:
         for pattern in (r'\u201c([^\u201d]{2,40})\u201d', r'"([^"]{2,40})"', r'\u300a([^\u300b]{2,60})\u300b'):
             for match in re.findall(pattern, combined_text):
                 candidate = self._normalize_project_candidate(match)
-                if self._is_valid_company_project_candidate(candidate):
+                if self._is_valid_company_project_candidate(candidate) and self._looks_like_company_project_name(candidate):
                     candidates.append(candidate)
 
         for token in re.findall(r'[A-Za-z][A-Za-z0-9-]{2,20}', combined_text):
@@ -805,17 +831,29 @@ class SQLiteWriter:
             return False
         if candidate in _COMPANY_NAME_STOPWORDS:
             return False
+        if any(marker in candidate for marker in _COMPANY_PROJECT_NOISE_MARKERS):
+            return False
         if '+' in candidate and not any(char.isdigit() for char in candidate):
             return False
         if candidate.isascii() and len(candidate.split()) >= 3:
             return False
         if any(marker in candidate for marker in _COMPANY_DOCUMENT_MARKERS):
             return False
+        if re.search(r'[：:|，。！？!?]', candidate):
+            return False
+        if len(candidate) > 18 and not re.search(r'[A-Za-z0-9-]', candidate):
+            return False
         return True
 
+    def _looks_like_company_project_name(self, candidate: str) -> bool:
+        if re.search(r'[A-Za-z0-9-]', candidate):
+            return True
+        return any(marker in candidate for marker in _COMPANY_PROJECT_NAME_MARKERS)
     def _is_valid_company_project_token(self, token: str) -> bool:
         upper = token.upper()
         if upper in _COMPANY_PROJECT_TOKEN_STOPWORDS:
+            return False
+        if any(marker in token for marker in _COMPANY_PROJECT_NOISE_MARKERS):
             return False
         if token.islower() and not any(char.isdigit() for char in token):
             return False
