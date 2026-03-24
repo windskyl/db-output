@@ -454,6 +454,106 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertIn('\u9f99\u867e\u5b89\u5168\u4f34\u4fa3', project_names)
             self.assertNotIn('\u4e2d\u56fd\u4f01\u4e1a\u5bb6', project_names)
             self.assertNotIn('\u300a\u4e2d\u56fd\u4f01\u4e1a\u5bb6\u300b\u72ec\u5bb6\u5bf9\u8bdd\u9f50\u5411\u4e1c\uff1a\u4e0d\u60f3\u88ab\u6dd8\u6c70\uff0c\u5c31\u8981\u62e5\u62b1AI', project_names)
+    def test_public_sentiment_negation_rules_flip_basic_polarity(self) -> None:
+        writer = SQLiteWriter()
+        negative_record = NormalizedRecord(
+            task_id='public-sentiment-openai-003',
+            domain='public_sentiment',
+            record_id='neg',
+            dedupe_key='neg',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/neg',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='The latest update is not good',
+            content_text='Users say the rollout is not good.',
+            relevance_score=0.7,
+            extra={},
+        )
+        positive_record = NormalizedRecord(
+            task_id='public-sentiment-openai-003',
+            domain='public_sentiment',
+            record_id='pos',
+            dedupe_key='pos',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/pos',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='The latest update is not bad',
+            content_text='The quality is not bad and keeps getting better.',
+            relevance_score=0.7,
+            extra={},
+        )
+
+        negative_label, negative_score = writer._classify_sentiment(negative_record)
+        positive_label, positive_score = writer._classify_sentiment(positive_record)
+
+        self.assertEqual(negative_label, 'negative')
+        self.assertLess(negative_score, 0.0)
+        self.assertEqual(positive_label, 'positive')
+        self.assertGreater(positive_score, 0.0)
+    def test_public_sentiment_strong_negative_cue_outweighs_single_positive_word(self) -> None:
+        writer = SQLiteWriter()
+        record = NormalizedRecord(
+            task_id='public-sentiment-openai-004',
+            domain='public_sentiment',
+            record_id='weighted',
+            dedupe_key='weighted',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/weighted',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='OpenAI is under fire but the docs are good',
+            content_text='OpenAI is under fire even though one part of the launch is good.',
+            relevance_score=0.7,
+            extra={},
+        )
+
+        label, score = writer._classify_sentiment(record)
+
+        self.assertEqual(label, 'negative')
+        self.assertLess(score, 0.0)
+    def test_public_sentiment_problem_statement_with_clear_benefits_is_not_forced_negative(self) -> None:
+        writer = SQLiteWriter()
+        record = NormalizedRecord(
+            task_id='public-sentiment-openai-002',
+            domain='public_sentiment',
+            record_id='public-sentiment-openai-002-hn-1',
+            dedupe_key='hn:1',
+            source_id='hn_algolia_company_story_search',
+            source_type='public_forum_api',
+            source_label='HN Algolia',
+            source_tag='story',
+            source_url='https://example.com/1',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='Show HN: Sandbox policy builder',
+            content_text='The problem is straightforward. No API key needed, no extra billing, and it simplifies repetitive rules.',
+            relevance_score=0.7,
+            extra={'matched_topics': ['tech_stack_engineering']},
+        )
+
+        label, score = writer._classify_sentiment(record)
+
+        self.assertEqual(label, 'positive')
+        self.assertGreater(score, 0.0)
     def test_public_sentiment_records_are_aggregated_into_topic_table(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -526,7 +626,7 @@ class SQLiteWriterTests(unittest.TestCase):
                     'SELECT record_id, sentiment_label, sentiment_score FROM core_sentiment_posts ORDER BY record_id'
                 ).fetchall()
                 topic_rows = connection.execute(
-                    'SELECT primary_entity, topic_name, post_count, positive_count, neutral_count, negative_count, average_sentiment_score, sample_title, source_ids_json '
+                    'SELECT primary_entity, topic_name, post_count, positive_count, neutral_count, negative_count, average_sentiment_score, dominant_sentiment_label, sample_title, most_positive_title, most_negative_title '
                     'FROM core_sentiment_topics ORDER BY topic_name'
                 ).fetchall()
             finally:
@@ -548,8 +648,10 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(topic_rows[0][4], 0)
             self.assertEqual(topic_rows[0][5], 1)
             self.assertLess(topic_rows[0][6], 0.0)
-            self.assertEqual(topic_rows[0][7], 'OpenAI is under fire from critics again')
-            self.assertEqual(json.loads(topic_rows[0][8]), ['hn_algolia_company_story_search'])
+            self.assertEqual(topic_rows[0][7], 'negative')
+            self.assertEqual(topic_rows[0][8], 'OpenAI is under fire from critics again')
+            self.assertIsNone(topic_rows[0][9])
+            self.assertEqual(topic_rows[0][10], 'OpenAI is under fire from critics again')
 
             self.assertEqual(topic_rows[1][0], 'OpenAI')
             self.assertEqual(topic_rows[1][1], 'tech_stack_engineering')
@@ -558,8 +660,10 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(topic_rows[1][4], 0)
             self.assertEqual(topic_rows[1][5], 1)
             self.assertEqual(topic_rows[1][6], 0.0)
-            self.assertEqual(topic_rows[1][7], 'OpenAI is under fire from critics again')
-            self.assertEqual(json.loads(topic_rows[1][8]), ['hn_algolia_company_story_search'])
+            self.assertEqual(topic_rows[1][7], 'neutral')
+            self.assertEqual(topic_rows[1][8], 'OpenAI is under fire from critics again')
+            self.assertEqual(topic_rows[1][9], 'OpenAI shipped a great API update')
+            self.assertEqual(topic_rows[1][10], 'OpenAI is under fire from critics again')
 
 
 if __name__ == '__main__':

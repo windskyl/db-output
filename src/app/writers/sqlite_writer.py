@@ -66,35 +66,56 @@ _COMPANY_PROJECT_NOISE_MARKERS = (
     '\u521b\u5ba2\u6c47',
 )
 
-_SENTIMENT_POSITIVE_PATTERNS = (
-    r'\bgood\b',
-    r'\bgreat\b',
-    r'\bbetter\b',
-    r'\bimprov(?:e|es|ed|ing)\b',
-    r'\bhelpful\b',
-    r'\buseful\b',
-    r'\binnovative\b',
-    r'\bpowerful\b',
-    r'\bfast\b',
-    r'\blove\b',
-    r'\bsuccess(?:ful)?\b',
-    r'\bleading\b',
-    r'\bbest\b',
+_SENTIMENT_POSITIVE_CUES = (
+    (r'\bgood\b', 1.0),
+    (r'\bgreat\b', 1.2),
+    (r'\bbetter\b', 0.8),
+    (r'\bimprov(?:e|es|ed|ing)\b', 0.8),
+    (r'\bhelpful\b', 1.0),
+    (r'\buseful\b', 1.0),
+    (r'\binnovative\b', 0.8),
+    (r'\bpowerful\b', 0.8),
+    (r'\bfast\b', 0.5),
+    (r'\blove\b', 1.2),
+    (r'\bsuccess(?:ful)?\b', 1.0),
+    (r'\bleading\b', 0.8),
+    (r'\bbest\b', 1.2),
+    (r'no api key needed', 1.5),
+    (r'no extra billing', 1.5),
+    (r'\bsimplif(?:y|ies|ied|ying)\b', 0.8),
+    (r'\beasier\b', 0.8),
+    (r'\breusable\b', 0.6),
 )
 
-_SENTIMENT_NEGATIVE_PATTERNS = (
-    r'under fire',
-    r'\bcritic(?:s|ism)?\b',
-    r'\bdisgusting\b',
-    r'\bbad\b',
-    r'\bworse\b',
-    r'\bproblem(?:s)?\b',
-    r'\brisk(?:s)?\b',
-    r'\bunsafe\b',
-    r'\bfail(?:ure|ed|ing)?\b',
-    r'cut back',
-    r'\bconcern(?:s)?\b',
-    r'\bissue(?:s)?\b',
+_SENTIMENT_NEGATIVE_CUES = (
+    (r'under fire', 1.5),
+    (r'\bcritic(?:s|ism)?\b', 1.0),
+    (r'\bdisgusting\b', 1.5),
+    (r'\bbad\b', 1.0),
+    (r'\bworse\b', 1.0),
+    (r'\brisk(?:s)?\b', 0.8),
+    (r'\bunsafe\b', 1.5),
+    (r'\bfail(?:ure|ed|ing)?\b', 1.0),
+    (r'cut back', 1.2),
+    (r'\bconcern(?:s)?\b', 0.8),
+    (r'\bissue(?:s)?\b', 0.8),
+)
+
+_SENTIMENT_NEGATED_NEGATIVE_CUES = (
+    (r'not bad', 1.0),
+    (r'not worse', 1.0),
+    (r'no problem', 1.0),
+    (r'no problems', 1.0),
+    (r'without issue', 0.8),
+    (r'without issues', 0.8),
+)
+
+_SENTIMENT_NEGATED_POSITIVE_CUES = (
+    (r'not good', 1.0),
+    (r'not great', 1.2),
+    (r'not helpful', 1.0),
+    (r'not useful', 1.0),
+    (r'not better', 0.8),
 )
 
 _JOB_SKILL_PATTERNS = (
@@ -320,10 +341,15 @@ class SQLiteWriter:
                 "neutral_count INTEGER NOT NULL,"
                 "negative_count INTEGER NOT NULL,"
                 "average_sentiment_score REAL NOT NULL,"
+                "dominant_sentiment_label TEXT NOT NULL,"
                 "first_published_at TEXT NOT NULL,"
                 "last_published_at TEXT NOT NULL,"
                 "sample_record_id TEXT NOT NULL,"
                 "sample_title TEXT NOT NULL,"
+                "most_positive_record_id TEXT,"
+                "most_positive_title TEXT,"
+                "most_negative_record_id TEXT,"
+                "most_negative_title TEXT,"
                 "source_ids_json TEXT NOT NULL,"
                 "extra_json TEXT NOT NULL"
                 ");"
@@ -714,11 +740,29 @@ class SQLiteWriter:
                         "sample_title": record.title,
                         "source_ids": set(),
                         "sample_source_url": record.source_url,
+                        "most_positive_record_id": None,
+                        "most_positive_title": None,
+                        "most_positive_score": None,
+                        "most_negative_record_id": None,
+                        "most_negative_title": None,
+                        "most_negative_score": None,
                     }
                     topic_rows[topic_record_id] = row
                 row["post_count"] = int(row["post_count"]) + 1
                 row[f"{sentiment_label}_count"] = int(row[f"{sentiment_label}_count"]) + 1
                 row["sentiment_score_sum"] = float(row["sentiment_score_sum"]) + float(sentiment_score)
+                if sentiment_label == "positive":
+                    current_positive = row["most_positive_score"]
+                    if current_positive is None or float(sentiment_score) >= float(current_positive):
+                        row["most_positive_score"] = float(sentiment_score)
+                        row["most_positive_record_id"] = record.record_id
+                        row["most_positive_title"] = record.title
+                if sentiment_label == "negative":
+                    current_negative = row["most_negative_score"]
+                    if current_negative is None or float(sentiment_score) <= float(current_negative):
+                        row["most_negative_score"] = float(sentiment_score)
+                        row["most_negative_record_id"] = record.record_id
+                        row["most_negative_title"] = record.title
                 source_ids = row["source_ids"]
                 if isinstance(source_ids, set):
                     source_ids.add(record.source_id)
@@ -736,9 +780,10 @@ class SQLiteWriter:
             INSERT OR REPLACE INTO core_sentiment_topics (
                 topic_record_id, primary_entity, topic_name, post_count,
                 positive_count, neutral_count, negative_count, average_sentiment_score,
-                first_published_at, last_published_at, sample_record_id,
-                sample_title, source_ids_json, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                dominant_sentiment_label, first_published_at, last_published_at, sample_record_id,
+                sample_title, most_positive_record_id, most_positive_title,
+                most_negative_record_id, most_negative_title, source_ids_json, extra_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
@@ -750,10 +795,15 @@ class SQLiteWriter:
                     int(row["neutral_count"]),
                     int(row["negative_count"]),
                     round(float(row["sentiment_score_sum"]) / max(int(row["post_count"]), 1), 4),
+                    self._dominant_sentiment_label(row),
                     str(row["first_published_at"]),
                     str(row["last_published_at"]),
                     str(row["sample_record_id"]),
                     str(row["sample_title"]),
+                    row["most_positive_record_id"],
+                    row["most_positive_title"],
+                    row["most_negative_record_id"],
+                    row["most_negative_title"],
                     json.dumps(sorted(row["source_ids"]), ensure_ascii=False),
                     json.dumps({"sample_source_url": row["sample_source_url"]}, ensure_ascii=False),
                 )
@@ -839,7 +889,7 @@ class SQLiteWriter:
             return False
         if any(marker in candidate for marker in _COMPANY_DOCUMENT_MARKERS):
             return False
-        if re.search(r'[：:|，。！？!?]', candidate):
+        if re.search(r'[闂?|闂傚倸鍊搁崐鐑芥倿閿旈敮鍋撶粭娑樻噽閻瑩鏌熺€电校闁稿鐗楅妵鍕箛閸撲胶鏆犻梺缁樺笒閻忔岸濡甸崟顖氱闁糕剝銇炴竟鏇㈡⒒娴ｄ警鐒炬い鎴濇嚇閺佸啴鏁冮埀顒€宓勯梺鍦濠㈡绮婚搹顐＄箚闁靛牆瀚崝宥嗙箾??]', candidate):
             return False
         if len(candidate) > 18 and not re.search(r'[A-Za-z0-9-]', candidate):
             return False
@@ -867,17 +917,31 @@ class SQLiteWriter:
         normalized = re.sub(r'\s+', '', project_name).lower()
         return f"{primary_entity}::{normalized}"
 
+    def _dominant_sentiment_label(self, row: dict[str, object]) -> str:
+        positive_count = int(row["positive_count"])
+        neutral_count = int(row["neutral_count"])
+        negative_count = int(row["negative_count"])
+        if positive_count > neutral_count and positive_count > negative_count:
+            return "positive"
+        if negative_count > neutral_count and negative_count > positive_count:
+            return "negative"
+        return "neutral"
     def _classify_sentiment(self, record: NormalizedRecord) -> tuple[str, float]:
         text = f"{record.title} {record.content_text}".lower()
-        positive_hits = sum(1 for pattern in _SENTIMENT_POSITIVE_PATTERNS if re.search(pattern, text))
-        negative_hits = sum(1 for pattern in _SENTIMENT_NEGATIVE_PATTERNS if re.search(pattern, text))
-        total_hits = positive_hits + negative_hits
-        if total_hits == 0:
+        positive_override_score = sum(weight for pattern, weight in _SENTIMENT_NEGATED_NEGATIVE_CUES if re.search(pattern, text))
+        negative_override_score = sum(weight for pattern, weight in _SENTIMENT_NEGATED_POSITIVE_CUES if re.search(pattern, text))
+        base_text = text
+        for pattern, _ in _SENTIMENT_NEGATED_NEGATIVE_CUES + _SENTIMENT_NEGATED_POSITIVE_CUES:
+            base_text = re.sub(pattern, ' ', base_text)
+        positive_score_total = positive_override_score + sum(weight for pattern, weight in _SENTIMENT_POSITIVE_CUES if re.search(pattern, base_text))
+        negative_score_total = negative_override_score + sum(weight for pattern, weight in _SENTIMENT_NEGATIVE_CUES if re.search(pattern, base_text))
+        total_score = positive_score_total + negative_score_total
+        if total_score == 0:
             return "neutral", 0.0
-        score = round((positive_hits - negative_hits) / total_hits, 4)
-        if score > 0.2:
+        score = round((positive_score_total - negative_score_total) / total_score, 4)
+        if score >= 0.2:
             return "positive", score
-        if score < -0.2:
+        if score <= -0.2:
             return "negative", score
         return "neutral", score
     def _sentiment_topic_names(self, record: NormalizedRecord) -> list[str]:
