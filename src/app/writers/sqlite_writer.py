@@ -350,6 +350,8 @@ class SQLiteWriter:
                 "most_positive_title TEXT,"
                 "most_negative_record_id TEXT,"
                 "most_negative_title TEXT,"
+                "most_neutral_record_id TEXT,"
+                "most_neutral_title TEXT,"
                 "source_ids_json TEXT NOT NULL,"
                 "extra_json TEXT NOT NULL"
                 ");"
@@ -746,6 +748,9 @@ class SQLiteWriter:
                         "most_negative_record_id": None,
                         "most_negative_title": None,
                         "most_negative_score": None,
+                        "most_neutral_record_id": None,
+                        "most_neutral_title": None,
+                        "most_neutral_abs_score": None,
                     }
                     topic_rows[topic_record_id] = row
                 row["post_count"] = int(row["post_count"]) + 1
@@ -763,6 +768,12 @@ class SQLiteWriter:
                         row["most_negative_score"] = float(sentiment_score)
                         row["most_negative_record_id"] = record.record_id
                         row["most_negative_title"] = record.title
+                neutral_distance = abs(float(sentiment_score))
+                current_neutral_distance = row["most_neutral_abs_score"]
+                if current_neutral_distance is None or neutral_distance <= float(current_neutral_distance):
+                    row["most_neutral_abs_score"] = neutral_distance
+                    row["most_neutral_record_id"] = record.record_id
+                    row["most_neutral_title"] = record.title
                 source_ids = row["source_ids"]
                 if isinstance(source_ids, set):
                     source_ids.add(record.source_id)
@@ -782,8 +793,9 @@ class SQLiteWriter:
                 positive_count, neutral_count, negative_count, average_sentiment_score,
                 dominant_sentiment_label, first_published_at, last_published_at, sample_record_id,
                 sample_title, most_positive_record_id, most_positive_title,
-                most_negative_record_id, most_negative_title, source_ids_json, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                most_negative_record_id, most_negative_title, most_neutral_record_id,
+                most_neutral_title, source_ids_json, extra_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
@@ -804,6 +816,8 @@ class SQLiteWriter:
                     row["most_positive_title"],
                     row["most_negative_record_id"],
                     row["most_negative_title"],
+                    row["most_neutral_record_id"],
+                    row["most_neutral_title"],
                     json.dumps(sorted(row["source_ids"]), ensure_ascii=False),
                     json.dumps({"sample_source_url": row["sample_source_url"]}, ensure_ascii=False),
                 )
@@ -889,7 +903,7 @@ class SQLiteWriter:
             return False
         if any(marker in candidate for marker in _COMPANY_DOCUMENT_MARKERS):
             return False
-        if re.search(r'[闂?|闂傚倸鍊搁崐鐑芥倿閿旈敮鍋撶粭娑樻噽閻瑩鏌熺€电校闁稿鐗楅妵鍕箛閸撲胶鏆犻梺缁樺笒閻忔岸濡甸崟顖氱闁糕剝銇炴竟鏇㈡⒒娴ｄ警鐒炬い鎴濇嚇閺佸啴鏁冮埀顒€宓勯梺鍦濠㈡绮婚搹顐＄箚闁靛牆瀚崝宥嗙箾??]', candidate):
+        if re.search(r'[闂?|闂傚倸鍊搁崐鎼佸磹閻戣姤鍊块柨鏃堟暜閸嬫挾绮☉妯诲櫧闁活厽鐟╅弻鐔衡偓鐢殿焾鏍￠梺绋款儐閻楁濡甸崟顖氱疀闁告挷鑳堕弳鐘绘⒑缂佹ê绗掗柣蹇斿哺婵＄敻宕熼姘鳖唺闂佺硶鍓濋妵鐐寸珶閺囥垺鈷掑ù锝勮閻掔偓銇勯幋婵囧殗闁轰礁鍟撮弫鍐焵椤掆偓瀹撳嫰姊洪崷顓烆暭婵犮垺顭囩划濠氭惞椤愶紕绠氶梺闈涚墕鐎氼噣宕濆鍡欑??]', candidate):
             return False
         if len(candidate) > 18 and not re.search(r'[A-Za-z0-9-]', candidate):
             return False

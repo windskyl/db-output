@@ -626,7 +626,7 @@ class SQLiteWriterTests(unittest.TestCase):
                     'SELECT record_id, sentiment_label, sentiment_score FROM core_sentiment_posts ORDER BY record_id'
                 ).fetchall()
                 topic_rows = connection.execute(
-                    'SELECT primary_entity, topic_name, post_count, positive_count, neutral_count, negative_count, average_sentiment_score, dominant_sentiment_label, sample_title, most_positive_title, most_negative_title '
+                    'SELECT primary_entity, topic_name, post_count, positive_count, neutral_count, negative_count, average_sentiment_score, dominant_sentiment_label, sample_title, most_positive_title, most_negative_title, most_neutral_title '
                     'FROM core_sentiment_topics ORDER BY topic_name'
                 ).fetchall()
             finally:
@@ -652,6 +652,7 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(topic_rows[0][8], 'OpenAI is under fire from critics again')
             self.assertIsNone(topic_rows[0][9])
             self.assertEqual(topic_rows[0][10], 'OpenAI is under fire from critics again')
+            self.assertEqual(topic_rows[0][11], 'OpenAI is under fire from critics again')
 
             self.assertEqual(topic_rows[1][0], 'OpenAI')
             self.assertEqual(topic_rows[1][1], 'tech_stack_engineering')
@@ -664,6 +665,7 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(topic_rows[1][8], 'OpenAI is under fire from critics again')
             self.assertEqual(topic_rows[1][9], 'OpenAI shipped a great API update')
             self.assertEqual(topic_rows[1][10], 'OpenAI is under fire from critics again')
+            self.assertEqual(topic_rows[1][11], 'OpenAI is under fire from critics again')
 
 
 if __name__ == '__main__':
