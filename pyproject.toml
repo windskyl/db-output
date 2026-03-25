@@ -15,6 +15,7 @@ dependencies = []
 
 [project.scripts]
 db-output = "app.interfaces.cli.main:main"
+db-output-web = "app.interfaces.web.server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

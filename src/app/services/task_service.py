@@ -181,6 +181,10 @@ class TaskService:
             cache_dir=str(paths.cache_dir) if task.run_policy.enable_cache else None,
         )
         self.writer.write(run_summary, output_records, artifacts)
+        report_summary = self._build_domain_report_summary(task.domain, Path(artifacts.sqlite_file))
+        if report_summary:
+            quality_report["domain_summary"] = report_summary
+            run_summary["quality_report"]["domain_summary"] = report_summary
         paths.quality_report_file.write_text(json.dumps(quality_report, ensure_ascii=False, indent=2), encoding="utf-8")
         paths.run_report_file.write_text(
             json.dumps(
@@ -210,6 +214,7 @@ class TaskService:
                         "fetch_retry_count": fetch_stats["total_retries"],
                         "fetch_failure_count": fetch_stats["failed_requests"],
                         "source_stats": quality_report["source_stats"],
+                        "domain_summary": quality_report.get("domain_summary"),
                     },
                 },
                 ensure_ascii=False,
@@ -368,6 +373,49 @@ class TaskService:
             stats[record.source_id] = stats.get(record.source_id, 0) + 1
         return stats
 
+    def _build_domain_report_summary(self, domain: str, sqlite_path: Path) -> dict[str, Any] | None:
+        if domain != "public_sentiment" or not sqlite_path.exists():
+            return None
+        import sqlite3
+
+        connection = sqlite3.connect(sqlite_path)
+        try:
+            rows = connection.execute(
+                """
+                SELECT topic_name, post_count, positive_count, neutral_count, negative_count,
+                       average_sentiment_score, dominant_sentiment_label,
+                       most_positive_title, most_negative_title, most_neutral_title, extra_json
+                FROM core_sentiment_topics
+                ORDER BY post_count DESC, topic_name ASC
+                """
+            ).fetchall()
+        finally:
+            connection.close()
+        if not rows:
+            return None
+        topics = []
+        for row in rows:
+            extra = json.loads(str(row[10])) if row[10] else {}
+            topics.append(
+                {
+                    "topic_name": row[0],
+                    "post_count": row[1],
+                    "positive_count": row[2],
+                    "neutral_count": row[3],
+                    "negative_count": row[4],
+                    "average_sentiment_score": row[5],
+                    "dominant_sentiment_label": row[6],
+                    "most_positive_title": row[7],
+                    "most_negative_title": row[8],
+                    "most_neutral_title": row[9],
+                    "positive_cue_counts": extra.get("positive_cue_counts", []),
+                    "negative_cue_counts": extra.get("negative_cue_counts", []),
+                }
+            )
+        return {
+            "topic_count": len(topics),
+            "topics": topics,
+        }
     def _build_warnings(self, raw_records: list[RawRecord], fetch_stats: dict[str, Any], quality_stats: dict[str, Any]) -> list[str]:
         warnings: list[str] = []
         if raw_records and raw_records[0].source_id == "seed":

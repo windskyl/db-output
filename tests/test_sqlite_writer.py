@@ -528,6 +528,61 @@ class SQLiteWriterTests(unittest.TestCase):
 
         self.assertEqual(label, 'negative')
         self.assertLess(score, 0.0)
+    def test_public_sentiment_chinese_cues_and_negation_are_classified_correctly(self) -> None:
+        writer = SQLiteWriter()
+        positive_record = NormalizedRecord(
+            task_id='public-sentiment-openai-005',
+            domain='public_sentiment',
+            record_id='zh-pos',
+            dedupe_key='zh-pos',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/zh-pos',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='这个功能不差',
+            content_text='整体更方便，也很有用，用户反馈很好评。',
+            relevance_score=0.7,
+            extra={},
+        )
+        negative_record = NormalizedRecord(
+            task_id='public-sentiment-openai-005',
+            domain='public_sentiment',
+            record_id='zh-neg',
+            dedupe_key='zh-neg',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/zh-neg',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='这次升级不好用',
+            content_text='用户批评这次改动有风险，也有不少问题。',
+            relevance_score=0.7,
+            extra={},
+        )
+
+        positive_analysis = writer._analyze_sentiment(positive_record)
+        negative_analysis = writer._analyze_sentiment(negative_record)
+
+        self.assertEqual(positive_analysis['label'], 'positive')
+        self.assertIn('不差', positive_analysis['positive_cues'])
+        self.assertIn('方便', positive_analysis['positive_cues'])
+        self.assertIn('有用', positive_analysis['positive_cues'])
+
+        self.assertEqual(negative_analysis['label'], 'negative')
+        self.assertIn('不好', negative_analysis['negative_cues'])
+        self.assertIn('不好用', negative_analysis['negative_cues'])
+        self.assertIn('批评', negative_analysis['negative_cues'])
+        self.assertIn('风险', negative_analysis['negative_cues'])
+
     def test_public_sentiment_problem_statement_with_clear_benefits_is_not_forced_negative(self) -> None:
         writer = SQLiteWriter()
         record = NormalizedRecord(
@@ -550,10 +605,13 @@ class SQLiteWriterTests(unittest.TestCase):
             extra={'matched_topics': ['tech_stack_engineering']},
         )
 
-        label, score = writer._classify_sentiment(record)
+        analysis = writer._analyze_sentiment(record)
 
-        self.assertEqual(label, 'positive')
-        self.assertGreater(score, 0.0)
+        self.assertEqual(analysis["label"], 'positive')
+        self.assertGreater(analysis["score"], 0.0)
+        self.assertIn('no api key needed', analysis["positive_cues"])
+        self.assertIn('no extra billing', analysis["positive_cues"])
+        self.assertIn('simplify', analysis["positive_cues"])
     def test_public_sentiment_records_are_aggregated_into_topic_table(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -623,10 +681,10 @@ class SQLiteWriterTests(unittest.TestCase):
             try:
                 post_count = connection.execute('SELECT COUNT(*) FROM core_sentiment_posts').fetchone()[0]
                 post_rows = connection.execute(
-                    'SELECT record_id, sentiment_label, sentiment_score FROM core_sentiment_posts ORDER BY record_id'
+                    'SELECT record_id, sentiment_label, sentiment_score, sentiment_positive_cues_json, sentiment_negative_cues_json FROM core_sentiment_posts ORDER BY record_id'
                 ).fetchall()
                 topic_rows = connection.execute(
-                    'SELECT primary_entity, topic_name, post_count, positive_count, neutral_count, negative_count, average_sentiment_score, dominant_sentiment_label, sample_title, most_positive_title, most_negative_title, most_neutral_title '
+                    'SELECT primary_entity, topic_name, post_count, positive_count, neutral_count, negative_count, average_sentiment_score, dominant_sentiment_label, sample_title, most_positive_title, most_negative_title, most_neutral_title, extra_json '
                     'FROM core_sentiment_topics ORDER BY topic_name'
                 ).fetchall()
             finally:
@@ -636,9 +694,14 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(post_rows[0][0], 'public-sentiment-openai-001-hn-1')
             self.assertEqual(post_rows[0][1], 'positive')
             self.assertGreater(post_rows[0][2], 0.0)
+            self.assertIn('great', json.loads(post_rows[0][3]))
+            self.assertIn('love', json.loads(post_rows[0][3]))
+            self.assertEqual(json.loads(post_rows[0][4]), [])
             self.assertEqual(post_rows[1][0], 'public-sentiment-openai-001-hn-2')
             self.assertEqual(post_rows[1][1], 'negative')
             self.assertLess(post_rows[1][2], 0.0)
+            self.assertIn('under fire', json.loads(post_rows[1][4]))
+            self.assertIn('critic', json.loads(post_rows[1][4]))
 
             self.assertEqual(len(topic_rows), 2)
             self.assertEqual(topic_rows[0][0], 'OpenAI')
@@ -653,6 +716,10 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertIsNone(topic_rows[0][9])
             self.assertEqual(topic_rows[0][10], 'OpenAI is under fire from critics again')
             self.assertEqual(topic_rows[0][11], 'OpenAI is under fire from critics again')
+            self.assertIn('under fire', json.loads(topic_rows[0][12])['most_negative_cues'])
+            self.assertEqual(json.loads(topic_rows[0][12])['most_positive_cues'], [])
+            self.assertEqual(json.loads(topic_rows[0][12])['positive_cue_counts'], [])
+            self.assertEqual(json.loads(topic_rows[0][12])['negative_cue_counts'][0]['cue'], 'bad')
 
             self.assertEqual(topic_rows[1][0], 'OpenAI')
             self.assertEqual(topic_rows[1][1], 'tech_stack_engineering')
@@ -666,6 +733,12 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(topic_rows[1][9], 'OpenAI shipped a great API update')
             self.assertEqual(topic_rows[1][10], 'OpenAI is under fire from critics again')
             self.assertEqual(topic_rows[1][11], 'OpenAI is under fire from critics again')
+            self.assertIn('great', json.loads(topic_rows[1][12])['most_positive_cues'])
+            self.assertIn('under fire', json.loads(topic_rows[1][12])['most_negative_cues'])
+            self.assertIn('under fire', json.loads(topic_rows[1][12])['most_neutral_cues'])
+            self.assertEqual(json.loads(topic_rows[1][12])['positive_cue_counts'][0]['cue'], 'better')
+            self.assertEqual(json.loads(topic_rows[1][12])['positive_cue_counts'][0]['count'], 1)
+            self.assertEqual(json.loads(topic_rows[1][12])['negative_cue_counts'][0]['cue'], 'bad')
 
 
 if __name__ == '__main__':

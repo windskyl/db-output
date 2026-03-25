@@ -67,55 +67,83 @@ _COMPANY_PROJECT_NOISE_MARKERS = (
 )
 
 _SENTIMENT_POSITIVE_CUES = (
-    (r'\bgood\b', 1.0),
-    (r'\bgreat\b', 1.2),
-    (r'\bbetter\b', 0.8),
-    (r'\bimprov(?:e|es|ed|ing)\b', 0.8),
-    (r'\bhelpful\b', 1.0),
-    (r'\buseful\b', 1.0),
-    (r'\binnovative\b', 0.8),
-    (r'\bpowerful\b', 0.8),
-    (r'\bfast\b', 0.5),
-    (r'\blove\b', 1.2),
-    (r'\bsuccess(?:ful)?\b', 1.0),
-    (r'\bleading\b', 0.8),
-    (r'\bbest\b', 1.2),
-    (r'no api key needed', 1.5),
-    (r'no extra billing', 1.5),
-    (r'\bsimplif(?:y|ies|ied|ying)\b', 0.8),
-    (r'\beasier\b', 0.8),
-    (r'\breusable\b', 0.6),
+    ('good', r'\bgood\b', 1.0),
+    ('great', r'\bgreat\b', 1.2),
+    ('better', r'\bbetter\b', 0.8),
+    ('improve', r'\bimprov(?:e|es|ed|ing)\b', 0.8),
+    ('helpful', r'\bhelpful\b', 1.0),
+    ('useful', r'\buseful\b', 1.0),
+    ('innovative', r'\binnovative\b', 0.8),
+    ('powerful', r'\bpowerful\b', 0.8),
+    ('fast', r'\bfast\b', 0.5),
+    ('love', r'\blove\b', 1.2),
+    ('success', r'\bsuccess(?:ful)?\b', 1.0),
+    ('leading', r'\bleading\b', 0.8),
+    ('best', r'\bbest\b', 1.2),
+    ('no api key needed', r'no api key needed', 1.5),
+    ('no extra billing', r'no extra billing', 1.5),
+    ('simplify', r'\bsimplif(?:y|ies|ied|ying)\b', 0.8),
+    ('easier', r'\beasier\b', 0.8),
+    ('reusable', r'\breusable\b', 0.6),
+    ('\u597d\u8bc4', '\u597d\u8bc4', 1.2),
+    ('\u65b9\u4fbf', '\u65b9\u4fbf', 0.8),
+    ('\u6709\u7528', '\u6709\u7528', 1.0),
+    ('\u6613\u7528', '\u6613\u7528', 0.8),
+    ('\u63d0\u5347', '\u63d0\u5347', 0.8),
+    ('\u6539\u5584', '\u6539\u5584', 0.8),
+    ('\u7a33\u5b9a', '\u7a33\u5b9a', 0.8),
+    ('\u5f3a\u5927', '\u5f3a\u5927', 0.8),
+    ('\u559c\u6b22', '\u559c\u6b22', 1.0),
+    ('\u9886\u5148', '\u9886\u5148', 0.8),
 )
 
 _SENTIMENT_NEGATIVE_CUES = (
-    (r'under fire', 1.5),
-    (r'\bcritic(?:s|ism)?\b', 1.0),
-    (r'\bdisgusting\b', 1.5),
-    (r'\bbad\b', 1.0),
-    (r'\bworse\b', 1.0),
-    (r'\brisk(?:s)?\b', 0.8),
-    (r'\bunsafe\b', 1.5),
-    (r'\bfail(?:ure|ed|ing)?\b', 1.0),
-    (r'cut back', 1.2),
-    (r'\bconcern(?:s)?\b', 0.8),
-    (r'\bissue(?:s)?\b', 0.8),
+    ('under fire', r'under fire', 1.5),
+    ('critic', r'\bcritic(?:s|ism)?\b', 1.0),
+    ('disgusting', r'\bdisgusting\b', 1.5),
+    ('bad', r'\bbad\b', 1.0),
+    ('worse', r'\bworse\b', 1.0),
+    ('risk', r'\brisk(?:s)?\b', 0.8),
+    ('unsafe', r'\bunsafe\b', 1.5),
+    ('fail', r'\bfail(?:ure|ed|ing)?\b', 1.0),
+    ('cut back', r'cut back', 1.2),
+    ('concern', r'\bconcern(?:s)?\b', 0.8),
+    ('issue', r'\bissue(?:s)?\b', 0.8),
+    ('\u4e89\u8bae', '\u4e89\u8bae', 1.0),
+    ('\u6279\u8bc4', '\u6279\u8bc4', 1.0),
+    ('\u7cdf\u7cd5', '\u7cdf\u7cd5', 1.2),
+    ('\u98ce\u9669', '\u98ce\u9669', 0.8),
+    ('\u95ee\u9898', '\u95ee\u9898', 0.8),
+    ('\u62c5\u5fe7', '\u62c5\u5fe7', 0.8),
+    ('\u5931\u671b', '\u5931\u671b', 1.0),
+    ('\u7ffb\u8f66', '\u7ffb\u8f66', 1.2),
+    ('\u88c1\u5458', '\u88c1\u5458', 1.0),
 )
 
 _SENTIMENT_NEGATED_NEGATIVE_CUES = (
-    (r'not bad', 1.0),
-    (r'not worse', 1.0),
-    (r'no problem', 1.0),
-    (r'no problems', 1.0),
-    (r'without issue', 0.8),
-    (r'without issues', 0.8),
+    ('not bad', r'not bad', 1.0),
+    ('not worse', r'not worse', 1.0),
+    ('no problem', r'no problem', 1.0),
+    ('no problems', r'no problems', 1.0),
+    ('without issue', r'without issue', 0.8),
+    ('without issues', r'without issues', 0.8),
+    ('\u4e0d\u5dee', '\u4e0d\u5dee', 1.0),
+    ('\u6ca1\u95ee\u9898', '\u6ca1\u95ee\u9898', 1.0),
+    ('\u6ca1\u6709\u95ee\u9898', '\u6ca1\u6709\u95ee\u9898', 1.0),
+    ('\u65e0\u95ee\u9898', '\u65e0\u95ee\u9898', 1.0),
 )
 
 _SENTIMENT_NEGATED_POSITIVE_CUES = (
-    (r'not good', 1.0),
-    (r'not great', 1.2),
-    (r'not helpful', 1.0),
-    (r'not useful', 1.0),
-    (r'not better', 0.8),
+    ('not good', r'not good', 1.0),
+    ('not great', r'not great', 1.2),
+    ('not helpful', r'not helpful', 1.0),
+    ('not useful', r'not useful', 1.0),
+    ('not better', r'not better', 0.8),
+    ('\u4e0d\u597d', '\u4e0d\u597d', 1.0),
+    ('\u4e0d\u597d\u7528', '\u4e0d\u597d\u7528', 1.2),
+    ('\u4e0d\u7a33\u5b9a', '\u4e0d\u7a33\u5b9a', 1.0),
+    ('\u4e0d\u65b9\u4fbf', '\u4e0d\u65b9\u4fbf', 1.0),
+    ('\u6ca1\u7528', '\u6ca1\u7528', 1.0),
 )
 
 _JOB_SKILL_PATTERNS = (
@@ -331,7 +359,7 @@ class SQLiteWriter:
                 ");"
             ),
             "public_sentiment": (
-                f"CREATE TABLE IF NOT EXISTS core_sentiment_posts ({common_columns}, content_text TEXT NOT NULL, sentiment_label TEXT NOT NULL, sentiment_score REAL NOT NULL);"
+                f"CREATE TABLE IF NOT EXISTS core_sentiment_posts ({common_columns}, content_text TEXT NOT NULL, sentiment_label TEXT NOT NULL, sentiment_score REAL NOT NULL, sentiment_positive_cues_json TEXT NOT NULL, sentiment_negative_cues_json TEXT NOT NULL);"
                 "CREATE TABLE IF NOT EXISTS core_sentiment_topics ("
                 "topic_record_id TEXT PRIMARY KEY,"
                 "primary_entity TEXT NOT NULL,"
@@ -364,8 +392,10 @@ class SQLiteWriter:
             return
         if domain == "public_sentiment":
             post_rows = []
+            sentiment_analyses: dict[str, dict[str, object]] = {}
             for record in records:
-                sentiment_label, sentiment_score = self._classify_sentiment(record)
+                analysis = self._analyze_sentiment(record)
+                sentiment_analyses[record.record_id] = analysis
                 post_rows.append(
                     (
                         record.record_id,
@@ -382,8 +412,10 @@ class SQLiteWriter:
                         json.dumps(record.topic_tags, ensure_ascii=False),
                         json.dumps(record.extra, ensure_ascii=False),
                         record.content_text,
-                        sentiment_label,
-                        sentiment_score,
+                        analysis["label"],
+                        analysis["score"],
+                        json.dumps(analysis["positive_cues"], ensure_ascii=False),
+                        json.dumps(analysis["negative_cues"], ensure_ascii=False),
                     )
                 )
             connection.executemany(
@@ -391,12 +423,13 @@ class SQLiteWriter:
                 INSERT OR REPLACE INTO core_sentiment_posts (
                     record_id, primary_entity, title, source_id, source_type, source_label, source_tag,
                     source_url, published_at, collected_at, relevance_score,
-                    topic_tags_json, extra_json, content_text, sentiment_label, sentiment_score
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    topic_tags_json, extra_json, content_text, sentiment_label, sentiment_score,
+                    sentiment_positive_cues_json, sentiment_negative_cues_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 post_rows,
             )
-            self._insert_sentiment_topics(connection, records)
+            self._insert_sentiment_topics(connection, records, sentiment_analyses)
             return
         table_name = {
             "jobs": "core_jobs_postings",
@@ -718,10 +751,14 @@ class SQLiteWriter:
             ],
         )
 
-    def _insert_sentiment_topics(self, connection: sqlite3.Connection, records: list[NormalizedRecord]) -> None:
+    def _insert_sentiment_topics(self, connection: sqlite3.Connection, records: list[NormalizedRecord], sentiment_analyses: dict[str, dict[str, object]]) -> None:
         topic_rows: dict[str, dict[str, object]] = {}
         for record in records:
-            sentiment_label, sentiment_score = self._classify_sentiment(record)
+            analysis = sentiment_analyses[record.record_id]
+            sentiment_label = str(analysis["label"])
+            sentiment_score = float(analysis["score"])
+            positive_cues = list(analysis["positive_cues"])
+            negative_cues = list(analysis["negative_cues"])
             topic_names = self._sentiment_topic_names(record)
             for topic_name in topic_names:
                 topic_record_id = f"{record.primary_entity}::{topic_name}"
@@ -745,35 +782,45 @@ class SQLiteWriter:
                         "most_positive_record_id": None,
                         "most_positive_title": None,
                         "most_positive_score": None,
+                        "most_positive_cues": [],
+                        "positive_cue_counts": {},
                         "most_negative_record_id": None,
                         "most_negative_title": None,
                         "most_negative_score": None,
+                        "most_negative_cues": [],
+                        "negative_cue_counts": {},
                         "most_neutral_record_id": None,
                         "most_neutral_title": None,
                         "most_neutral_abs_score": None,
+                        "most_neutral_cues": [],
                     }
                     topic_rows[topic_record_id] = row
                 row["post_count"] = int(row["post_count"]) + 1
                 row[f"{sentiment_label}_count"] = int(row[f"{sentiment_label}_count"]) + 1
                 row["sentiment_score_sum"] = float(row["sentiment_score_sum"]) + float(sentiment_score)
+                self._merge_cue_counts(row["positive_cue_counts"], positive_cues)
+                self._merge_cue_counts(row["negative_cue_counts"], negative_cues)
                 if sentiment_label == "positive":
                     current_positive = row["most_positive_score"]
                     if current_positive is None or float(sentiment_score) >= float(current_positive):
                         row["most_positive_score"] = float(sentiment_score)
                         row["most_positive_record_id"] = record.record_id
                         row["most_positive_title"] = record.title
+                        row["most_positive_cues"] = positive_cues
                 if sentiment_label == "negative":
                     current_negative = row["most_negative_score"]
                     if current_negative is None or float(sentiment_score) <= float(current_negative):
                         row["most_negative_score"] = float(sentiment_score)
                         row["most_negative_record_id"] = record.record_id
                         row["most_negative_title"] = record.title
+                        row["most_negative_cues"] = negative_cues
                 neutral_distance = abs(float(sentiment_score))
                 current_neutral_distance = row["most_neutral_abs_score"]
                 if current_neutral_distance is None or neutral_distance <= float(current_neutral_distance):
                     row["most_neutral_abs_score"] = neutral_distance
                     row["most_neutral_record_id"] = record.record_id
                     row["most_neutral_title"] = record.title
+                    row["most_neutral_cues"] = positive_cues if positive_cues else negative_cues
                 source_ids = row["source_ids"]
                 if isinstance(source_ids, set):
                     source_ids.add(record.source_id)
@@ -819,7 +866,17 @@ class SQLiteWriter:
                     row["most_neutral_record_id"],
                     row["most_neutral_title"],
                     json.dumps(sorted(row["source_ids"]), ensure_ascii=False),
-                    json.dumps({"sample_source_url": row["sample_source_url"]}, ensure_ascii=False),
+                    json.dumps(
+                        {
+                            "sample_source_url": row["sample_source_url"],
+                            "most_positive_cues": row["most_positive_cues"],
+                            "most_negative_cues": row["most_negative_cues"],
+                            "most_neutral_cues": row["most_neutral_cues"],
+                            "positive_cue_counts": self._serialize_cue_counts(row["positive_cue_counts"]),
+                            "negative_cue_counts": self._serialize_cue_counts(row["negative_cue_counts"]),
+                        },
+                        ensure_ascii=False,
+                    ),
                 )
                 for row in topic_rows.values()
             ],
@@ -903,14 +960,14 @@ class SQLiteWriter:
             return False
         if any(marker in candidate for marker in _COMPANY_DOCUMENT_MARKERS):
             return False
-        if re.search(r'[闂?|闂傚倸鍊搁崐鎼佸磹閻戣姤鍊块柨鏃堟暜閸嬫挾绮☉妯诲櫧闁活厽鐟╅弻鐔衡偓鐢殿焾鏍￠梺绋款儐閻楁濡甸崟顖氱疀闁告挷鑳堕弳鐘绘⒑缂佹ê绗掗柣蹇斿哺婵＄敻宕熼姘鳖唺闂佺硶鍓濋妵鐐寸珶閺囥垺鈷掑ù锝勮閻掔偓銇勯幋婵囧殗闁轰礁鍟撮弫鍐焵椤掆偓瀹撳嫰姊洪崷顓烆暭婵犮垺顭囩划濠氭惞椤愶紕绠氶梺闈涚墕鐎氼噣宕濆鍡欑??]', candidate):
+        if re.search(r'[:|闁挎稑琚埀顒€鍋婄槐鎺楁晬?!]', candidate):
             return False
         if len(candidate) > 18 and not re.search(r'[A-Za-z0-9-]', candidate):
             return False
         return True
 
     def _looks_like_company_project_name(self, candidate: str) -> bool:
-        if re.search(r'[A-Za-z0-9-]', candidate):
+        if re.search(r'[:|闁挎稑琚埀顒€鍋婄槐鎺楁晬?!]', candidate):
             return True
         return any(marker in candidate for marker in _COMPANY_PROJECT_NAME_MARKERS)
     def _is_valid_company_project_token(self, token: str) -> bool:
@@ -931,6 +988,16 @@ class SQLiteWriter:
         normalized = re.sub(r'\s+', '', project_name).lower()
         return f"{primary_entity}::{normalized}"
 
+    def _merge_cue_counts(self, counts: dict[str, int], cues: list[str]) -> None:
+        for cue in cues:
+            counts[cue] = counts.get(cue, 0) + 1
+
+    def _serialize_cue_counts(self, counts: dict[str, int]) -> list[dict[str, object]]:
+        return [
+            {"cue": cue, "count": count}
+            for cue, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        ]
+
     def _dominant_sentiment_label(self, row: dict[str, object]) -> str:
         positive_count = int(row["positive_count"])
         neutral_count = int(row["neutral_count"])
@@ -940,24 +1007,51 @@ class SQLiteWriter:
         if negative_count > neutral_count and negative_count > positive_count:
             return "negative"
         return "neutral"
-    def _classify_sentiment(self, record: NormalizedRecord) -> tuple[str, float]:
+
+    def _analyze_sentiment(self, record: NormalizedRecord) -> dict[str, object]:
         text = f"{record.title} {record.content_text}".lower()
-        positive_override_score = sum(weight for pattern, weight in _SENTIMENT_NEGATED_NEGATIVE_CUES if re.search(pattern, text))
-        negative_override_score = sum(weight for pattern, weight in _SENTIMENT_NEGATED_POSITIVE_CUES if re.search(pattern, text))
+        positive_override_matches = self._match_sentiment_cues(text, _SENTIMENT_NEGATED_NEGATIVE_CUES)
+        negative_override_matches = self._match_sentiment_cues(text, _SENTIMENT_NEGATED_POSITIVE_CUES)
         base_text = text
-        for pattern, _ in _SENTIMENT_NEGATED_NEGATIVE_CUES + _SENTIMENT_NEGATED_POSITIVE_CUES:
+        for _, pattern, _ in _SENTIMENT_NEGATED_NEGATIVE_CUES + _SENTIMENT_NEGATED_POSITIVE_CUES:
             base_text = re.sub(pattern, ' ', base_text)
-        positive_score_total = positive_override_score + sum(weight for pattern, weight in _SENTIMENT_POSITIVE_CUES if re.search(pattern, base_text))
-        negative_score_total = negative_override_score + sum(weight for pattern, weight in _SENTIMENT_NEGATIVE_CUES if re.search(pattern, base_text))
+        positive_matches = positive_override_matches + self._match_sentiment_cues(base_text, _SENTIMENT_POSITIVE_CUES)
+        negative_matches = negative_override_matches + self._match_sentiment_cues(base_text, _SENTIMENT_NEGATIVE_CUES)
+        positive_score_total = sum(match["weight"] for match in positive_matches)
+        negative_score_total = sum(match["weight"] for match in negative_matches)
         total_score = positive_score_total + negative_score_total
         if total_score == 0:
-            return "neutral", 0.0
+            return {
+                "label": "neutral",
+                "score": 0.0,
+                "positive_cues": [],
+                "negative_cues": [],
+            }
         score = round((positive_score_total - negative_score_total) / total_score, 4)
         if score >= 0.2:
-            return "positive", score
-        if score <= -0.2:
-            return "negative", score
-        return "neutral", score
+            label = "positive"
+        elif score <= -0.2:
+            label = "negative"
+        else:
+            label = "neutral"
+        return {
+            "label": label,
+            "score": score,
+            "positive_cues": [str(match["label"]) for match in positive_matches],
+            "negative_cues": [str(match["label"]) for match in negative_matches],
+        }
+
+    def _classify_sentiment(self, record: NormalizedRecord) -> tuple[str, float]:
+        analysis = self._analyze_sentiment(record)
+        return str(analysis["label"]), float(analysis["score"])
+
+    def _match_sentiment_cues(self, text: str, cues: tuple[tuple[str, str, float], ...]) -> list[dict[str, object]]:
+        matches: list[dict[str, object]] = []
+        for label, pattern, weight in cues:
+            if re.search(pattern, text):
+                matches.append({"label": label, "weight": float(weight)})
+        return matches
+
     def _sentiment_topic_names(self, record: NormalizedRecord) -> list[str]:
         raw_topics = record.extra.get("matched_topics", record.topic_tags)
         if isinstance(raw_topics, str):

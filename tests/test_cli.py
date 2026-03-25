@@ -91,6 +91,31 @@ class CliTests(unittest.TestCase):
             self.assertEqual(payload["quality_report"]["output_count"], 1)
             self.assertIn("fetch_stats", payload["quality_report"])
 
+    def test_report_command_includes_public_sentiment_domain_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            task_path = Path(temp_dir) / 'public_sentiment_task.json'
+            task_path.write_text(json.dumps({
+                'task_id': 'public-sentiment-cli-001',
+                'domain': 'public_sentiment',
+                'scenario_template': 'company_sentiment_tracking_basic',
+                'targets': [{'type': 'company', 'value': 'OpenAI'}],
+                'topic_scope': ['tech_stack_engineering'],
+                'time_range': {'start': '2026-03-01T00:00:00', 'end': '2026-12-31T23:59:59', 'timezone': 'UTC'},
+                'source_policy': {'selection_mode': 'explicit', 'whitelist': ['hn_algolia_company_story_search'], 'allow_html': False, 'allow_rss': False, 'allow_api': True},
+                'relevance_policy': {'require_target_match': True, 'require_topic_match': True, 'require_cooccurrence': False, 'min_relevance_score': 0.6},
+                'output_policy': {'writer': 'sqlite', 'keep_raw': True, 'keep_normalized': True, 'max_output_records': 20, 'update_mode': 'replace'},
+                'run_policy': {'enable_cache': False},
+            }, ensure_ascii=False), encoding='utf-8')
+            run_result = self.run_cli('--base-dir', temp_dir, 'run', str(task_path))
+            self.assertEqual(run_result.returncode, 0, run_result.stderr)
+            result = self.run_cli('--base-dir', temp_dir, 'report', 'public-sentiment-cli-001', '--kind', 'quality')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertIn('domain_summary', payload['quality_report'])
+            self.assertGreaterEqual(payload['quality_report']['domain_summary']['topic_count'], 1)
+            first_topic = payload['quality_report']['domain_summary']['topics'][0]
+            self.assertIn('topic_name', first_topic)
+            self.assertIn('dominant_sentiment_label', first_topic)
     def test_report_command_can_show_quality_report_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             self.run_cli("--base-dir", temp_dir, "run", str(EXAMPLE_TASK))
