@@ -374,23 +374,34 @@ class TaskService:
         return stats
 
     def _build_domain_report_summary(self, domain: str, sqlite_path: Path) -> dict[str, Any] | None:
-        if domain != "public_sentiment" or not sqlite_path.exists():
+        if not sqlite_path.exists():
             return None
         import sqlite3
 
         connection = sqlite3.connect(sqlite_path)
         try:
-            rows = connection.execute(
-                """
-                SELECT topic_name, post_count, positive_count, neutral_count, negative_count,
-                       average_sentiment_score, dominant_sentiment_label,
-                       most_positive_title, most_negative_title, most_neutral_title, extra_json
-                FROM core_sentiment_topics
-                ORDER BY post_count DESC, topic_name ASC
-                """
-            ).fetchall()
+            if domain == "public_sentiment":
+                return self._build_public_sentiment_domain_summary(connection)
+            if domain == "jobs":
+                return self._build_jobs_domain_summary(connection)
+            if domain == "company_intel":
+                return self._build_company_intel_domain_summary(connection)
+            if domain == "finance":
+                return self._build_finance_domain_summary(connection)
+            return None
         finally:
             connection.close()
+
+    def _build_public_sentiment_domain_summary(self, connection: Any) -> dict[str, Any] | None:
+        rows = connection.execute(
+            """
+            SELECT topic_name, post_count, positive_count, neutral_count, negative_count,
+                   average_sentiment_score, dominant_sentiment_label,
+                   most_positive_title, most_negative_title, most_neutral_title, extra_json
+            FROM core_sentiment_topics
+            ORDER BY post_count DESC, topic_name ASC
+            """
+        ).fetchall()
         if not rows:
             return None
         topics = []
@@ -412,9 +423,119 @@ class TaskService:
                     "negative_cue_counts": extra.get("negative_cue_counts", []),
                 }
             )
+        total_posts = sum(topic["post_count"] for topic in topics)
+        top_topic = topics[0]["topic_name"] if topics else None
         return {
+            "kind": "public_sentiment",
             "topic_count": len(topics),
             "topics": topics,
+            "cards": [
+                {"label": "Topics", "value": len(topics)},
+                {"label": "Posts", "value": total_posts},
+            ],
+            "narrative": f"Captured {total_posts} sentiment posts across {len(topics)} topic buckets. The busiest topic is {top_topic or 'N/A'}.",
+        }
+
+    def _build_jobs_domain_summary(self, connection: Any) -> dict[str, Any] | None:
+        posting_count = int(connection.execute("SELECT COUNT(*) FROM core_jobs_postings").fetchone()[0])
+        if posting_count == 0:
+            return None
+        company_rows = connection.execute(
+            "SELECT primary_entity, COUNT(*) FROM core_jobs_postings GROUP BY primary_entity ORDER BY COUNT(*) DESC, primary_entity ASC LIMIT 5"
+        ).fetchall()
+        skill_rows = connection.execute(
+            "SELECT skill_name, COUNT(*) FROM core_jobs_skills GROUP BY skill_name ORDER BY COUNT(*) DESC, skill_name ASC LIMIT 8"
+        ).fetchall()
+        company_count = int(connection.execute("SELECT COUNT(DISTINCT primary_entity) FROM core_jobs_postings").fetchone()[0])
+        skill_count = int(connection.execute("SELECT COUNT(*) FROM core_jobs_skills").fetchone()[0])
+        top_company = company_rows[0][0] if company_rows else None
+        top_skill = skill_rows[0][0] if skill_rows else None
+        return {
+            "kind": "jobs",
+            "cards": [
+                {"label": "Postings", "value": posting_count},
+                {"label": "Companies", "value": company_count},
+                {"label": "Skill rows", "value": skill_count},
+            ],
+            "sections": [
+                {
+                    "title": "Top companies",
+                    "items": [{"label": row[0], "value": row[1]} for row in company_rows],
+                },
+                {
+                    "title": "Top skills",
+                    "items": [{"label": row[0], "value": row[1]} for row in skill_rows],
+                },
+            ],
+            "narrative": f"Found {posting_count} job postings from {company_count} companies. The most visible company is {top_company or 'N/A'} and the most frequent skill is {top_skill or 'N/A'}.",
+        }
+
+    def _build_company_intel_domain_summary(self, connection: Any) -> dict[str, Any] | None:
+        event_count = int(connection.execute("SELECT COUNT(*) FROM core_company_events").fetchone()[0])
+        if event_count == 0:
+            return None
+        profile_rows = connection.execute(
+            "SELECT company_name, evidence_count FROM core_company_profiles ORDER BY evidence_count DESC, company_name ASC LIMIT 5"
+        ).fetchall()
+        project_rows = connection.execute(
+            "SELECT project_name, mention_count FROM core_company_projects ORDER BY mention_count DESC, project_name ASC LIMIT 8"
+        ).fetchall()
+        profile_count = int(connection.execute("SELECT COUNT(*) FROM core_company_profiles").fetchone()[0])
+        project_count = int(connection.execute("SELECT COUNT(*) FROM core_company_projects").fetchone()[0])
+        top_company = profile_rows[0][0] if profile_rows else None
+        top_project = project_rows[0][0] if project_rows else None
+        return {
+            "kind": "company_intel",
+            "cards": [
+                {"label": "Events", "value": event_count},
+                {"label": "Profiles", "value": profile_count},
+                {"label": "Projects", "value": project_count},
+            ],
+            "sections": [
+                {
+                    "title": "Tracked companies",
+                    "items": [{"label": row[0], "value": row[1]} for row in profile_rows],
+                },
+                {
+                    "title": "Top projects",
+                    "items": [{"label": row[0], "value": row[1]} for row in project_rows],
+                },
+            ],
+            "narrative": f"Captured {event_count} company-intel events. The strongest profile is {top_company or 'N/A'} and the leading project label is {top_project or 'N/A'}.",
+        }
+
+    def _build_finance_domain_summary(self, connection: Any) -> dict[str, Any] | None:
+        event_count = int(connection.execute("SELECT COUNT(*) FROM core_finance_events").fetchone()[0])
+        if event_count == 0:
+            return None
+        instrument_rows = connection.execute(
+            "SELECT symbol, instrument_name FROM core_finance_instruments ORDER BY symbol ASC LIMIT 5"
+        ).fetchall()
+        metric_rows = connection.execute(
+            "SELECT metric_name, COUNT(*) FROM core_finance_metrics GROUP BY metric_name ORDER BY COUNT(*) DESC, metric_name ASC LIMIT 8"
+        ).fetchall()
+        instrument_count = int(connection.execute("SELECT COUNT(*) FROM core_finance_instruments").fetchone()[0])
+        metric_count = int(connection.execute("SELECT COUNT(*) FROM core_finance_metrics").fetchone()[0])
+        top_instrument = instrument_rows[0][0] if instrument_rows else None
+        top_metric = metric_rows[0][0] if metric_rows else None
+        return {
+            "kind": "finance",
+            "cards": [
+                {"label": "Events", "value": event_count},
+                {"label": "Instruments", "value": instrument_count},
+                {"label": "Metrics", "value": metric_count},
+            ],
+            "sections": [
+                {
+                    "title": "Tracked instruments",
+                    "items": [{"label": row[0], "value": row[1] or row[0]} for row in instrument_rows],
+                },
+                {
+                    "title": "Top metrics",
+                    "items": [{"label": row[0], "value": row[1]} for row in metric_rows],
+                },
+            ],
+            "narrative": f"Captured {event_count} finance events across {instrument_count} instruments. The leading instrument is {top_instrument or 'N/A'} and the top metric is {top_metric or 'N/A'}.",
         }
     def _build_warnings(self, raw_records: list[RawRecord], fetch_stats: dict[str, Any], quality_stats: dict[str, Any]) -> list[str]:
         warnings: list[str] = []

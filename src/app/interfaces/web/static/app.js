@@ -238,66 +238,114 @@ async function loadRecentTaskReport(taskId, domain) {
 
 function renderDomainSummary(summary) {
   els.domainSummary.innerHTML = '';
-  if (!summary || !summary.topics || !summary.topics.length) {
+  if (!summary) {
     els.domainSummary.textContent = 'No domain-specific summary is available yet.';
     return;
   }
-  for (const topic of summary.topics) {
-    const card = document.createElement('article');
-    card.className = 'topic-card';
-    const positiveCues = (topic.positive_cue_counts || []).map((item) => `${item.cue} ×${item.count}`);
-    const negativeCues = (topic.negative_cue_counts || []).map((item) => `${item.cue} ×${item.count}`);
-    card.innerHTML = `
-      <div class="topic-head">
-        <h4></h4>
-        <span class="topic-badge"></span>
-      </div>
-      <div class="metric-row"></div>
-      <div class="topic-copy"></div>
-      <div class="cue-list positive"></div>
-      <div class="cue-list negative"></div>
-    `;
-    card.querySelector('h4').textContent = topic.topic_name;
-    card.querySelector('.topic-badge').textContent = `dominant: ${topic.dominant_sentiment_label}`;
-    const metricRow = card.querySelector('.metric-row');
-    const metrics = [
-      `posts ${topic.post_count}`,
-      `positive ${topic.positive_count}`,
-      `neutral ${topic.neutral_count}`,
-      `negative ${topic.negative_count}`,
-      `avg ${topic.average_sentiment_score}`,
-    ];
-    for (const metric of metrics) {
-      const pill = document.createElement('span');
-      pill.className = 'metric-pill';
-      pill.textContent = metric;
-      metricRow.appendChild(pill);
+
+  if (summary.narrative) {
+    const narrative = document.createElement('article');
+    narrative.className = 'topic-card';
+    narrative.innerHTML = `<div class="topic-copy"><p>${summary.narrative}</p></div>`;
+    els.domainSummary.appendChild(narrative);
+  }
+
+  if (summary.narrative) {
+    const narrative = document.createElement('article');
+    narrative.className = 'topic-card';
+    narrative.innerHTML = `<div class="topic-copy"><p>${summary.narrative}</p></div>`;
+    els.domainSummary.appendChild(narrative);
+  }
+
+  if (summary.cards?.length) {
+    const cardRow = document.createElement('div');
+    cardRow.className = 'summary-grid';
+    for (const item of summary.cards) {
+      const card = document.createElement('article');
+      card.className = 'summary-card';
+      card.innerHTML = '<div class="summary-label"></div><div class="summary-value"></div>';
+      card.querySelector('.summary-label').textContent = item.label;
+      card.querySelector('.summary-value').textContent = String(item.value);
+      cardRow.appendChild(card);
     }
-    card.querySelector('.topic-copy').innerHTML = `
-      <p><strong>Most positive:</strong> ${topic.most_positive_title || 'N/A'}</p>
-      <p><strong>Most negative:</strong> ${topic.most_negative_title || 'N/A'}</p>
-      <p><strong>Most neutral:</strong> ${topic.most_neutral_title || 'N/A'}</p>
-    `;
-    const positiveList = card.querySelector('.cue-list.positive');
-    const negativeList = card.querySelector('.cue-list.negative');
-    if (positiveCues.length) {
+    els.domainSummary.appendChild(cardRow);
+  }
+
+  if (summary.topics?.length) {
+    for (const topic of summary.topics) {
+      const card = document.createElement('article');
+      card.className = 'topic-card';
+      const positiveCues = (topic.positive_cue_counts || []).map((item) => `${item.cue} x${item.count}`);
+      const negativeCues = (topic.negative_cue_counts || []).map((item) => `${item.cue} x${item.count}`);
+      card.innerHTML = `
+        <div class="topic-head">
+          <h4></h4>
+          <span class="topic-badge"></span>
+        </div>
+        <div class="metric-row"></div>
+        <div class="topic-copy"></div>
+        <div class="cue-list positive"></div>
+        <div class="cue-list negative"></div>
+      `;
+      card.querySelector('h4').textContent = topic.topic_name;
+      card.querySelector('.topic-badge').textContent = `dominant: ${topic.dominant_sentiment_label}`;
+      const metricRow = card.querySelector('.metric-row');
+      const metrics = [
+        `posts ${topic.post_count}`,
+        `positive ${topic.positive_count}`,
+        `neutral ${topic.neutral_count}`,
+        `negative ${topic.negative_count}`,
+        `avg ${topic.average_sentiment_score}`,
+      ];
+      for (const metric of metrics) {
+        const pill = document.createElement('span');
+        pill.className = 'metric-pill';
+        pill.textContent = metric;
+        metricRow.appendChild(pill);
+      }
+      card.querySelector('.topic-copy').innerHTML = `
+        <p><strong>Most positive:</strong> ${topic.most_positive_title || 'N/A'}</p>
+        <p><strong>Most negative:</strong> ${topic.most_negative_title || 'N/A'}</p>
+        <p><strong>Most neutral:</strong> ${topic.most_neutral_title || 'N/A'}</p>
+      `;
+      const positiveList = card.querySelector('.cue-list.positive');
+      const negativeList = card.querySelector('.cue-list.negative');
       for (const cue of positiveCues) {
         const chip = document.createElement('span');
         chip.className = 'cue-chip';
         chip.textContent = `Positive cue ${cue}`;
         positiveList.appendChild(chip);
       }
-    }
-    if (negativeCues.length) {
       for (const cue of negativeCues) {
         const chip = document.createElement('span');
         chip.className = 'cue-chip';
         chip.textContent = `Negative cue ${cue}`;
         negativeList.appendChild(chip);
       }
+      els.domainSummary.appendChild(card);
     }
-    els.domainSummary.appendChild(card);
+    return;
   }
+
+  if (summary.sections?.length) {
+    for (const section of summary.sections) {
+      const card = document.createElement('article');
+      card.className = 'topic-card';
+      card.innerHTML = '<div class="topic-head"><h4></h4></div><div class="metric-row"></div>';
+      card.querySelector('h4').textContent = section.title;
+      const metricRow = card.querySelector('.metric-row');
+      for (const item of section.items || []) {
+        const pill = document.createElement('span');
+        pill.className = 'metric-pill';
+        pill.textContent = `${item.label}: ${item.value}`;
+        metricRow.appendChild(pill);
+      }
+      els.domainSummary.appendChild(card);
+    }
+    return;
+  }
+
+  els.domainSummary.textContent = 'No domain-specific summary is available yet.';
 }
 
 function summarizeResult(kind, result) {
