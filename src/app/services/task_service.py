@@ -97,6 +97,7 @@ class TaskService:
         item = self._resolve_task_run(task_id=task_id, domain=domain)
         return {
             "task": item["task"],
+            "task_payload": item.get("task_payload"),
             "status": item["status"],
             "created_at": item["created_at"],
             "updated_at": item["updated_at"],
@@ -110,6 +111,7 @@ class TaskService:
         item = self._resolve_task_run(task_id=task_id, domain=domain)
         report: dict[str, Any] = {
             "task": item["task"],
+            "task_payload": item.get("task_payload"),
             "status": item["status"],
             "created_at": item["created_at"],
             "updated_at": item["updated_at"],
@@ -190,6 +192,7 @@ class TaskService:
             json.dumps(
                 {
                     "task": task.to_summary(),
+                    "task_payload": task.to_dict(),
                     "selected_sources": [profile.to_summary() for profile in selected_sources],
                     "artifacts": {
                         "raw_file": artifacts.raw_file,
@@ -628,6 +631,7 @@ class TaskService:
         updated_at = self._timestamp_to_iso(max(run_report_stat.st_mtime, quality_report_stat.st_mtime))
         return {
             "task": dict(run_report.get("task", {})),
+            "task_payload": dict(run_report.get("task_payload", {})) if isinstance(run_report.get("task_payload", {}), dict) else None,
             "status": str(run_report.get("status", "unknown")),
             "created_at": created_at,
             "updated_at": updated_at,

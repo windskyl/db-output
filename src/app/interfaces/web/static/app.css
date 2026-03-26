@@ -465,3 +465,10 @@ textarea {
   font-size: 13px;
   line-height: 1.5;
 }
+
+.task-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

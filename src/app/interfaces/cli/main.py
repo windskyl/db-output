@@ -9,6 +9,17 @@ from app.models.task_spec import TaskSpec, TaskValidationError
 from app.services.task_service import TaskService
 
 
+def configure_stdio() -> None:
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None or not hasattr(stream, "reconfigure"):
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except Exception:
+            pass
+
+
 def load_task(path: Path) -> TaskSpec:
     payload = json.loads(path.read_text(encoding="utf-8-sig"))
     return TaskSpec.from_dict(payload)
@@ -52,6 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
     service = TaskService(base_dir=Path(args.base_dir))

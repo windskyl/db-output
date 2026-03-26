@@ -57,6 +57,45 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(payload['result']['total'], 0)
         self.assertEqual(payload['result']['tasks'], [])
 
+    def test_report_route_exposes_full_task_payload_for_recent_run_reuse(self) -> None:
+        task = {
+            'task_id': 'web-public-sentiment-001',
+            'domain': 'public_sentiment',
+            'scenario_template': 'company_sentiment_tracking_basic',
+            'targets': [{'type': 'company', 'value': 'OpenAI'}],
+            'topic_scope': ['tech_stack_engineering'],
+            'time_range': {'start': '2026-03-01T00:00:00', 'end': '2026-12-31T23:59:59', 'timezone': 'UTC'},
+            'source_policy': {'selection_mode': 'explicit', 'whitelist': ['hn_algolia_company_story_search'], 'allow_html': False, 'allow_rss': False, 'allow_api': True},
+            'relevance_policy': {'require_target_match': True, 'require_topic_match': True, 'require_cooccurrence': False, 'min_relevance_score': 0.6},
+            'output_policy': {'writer': 'sqlite', 'keep_raw': True, 'keep_normalized': True, 'max_output_records': 10, 'update_mode': 'replace'},
+            'run_policy': {'enable_cache': False},
+        }
+        run_response = request.urlopen(
+            request.Request(
+                f"{self.base_url}/api/run",
+                method='POST',
+                data=json.dumps({'task': task}, ensure_ascii=False).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+            ),
+            timeout=20,
+        )
+        self.assertEqual(json.loads(run_response.read().decode('utf-8'))['ok'], True)
+
+        report_response = request.urlopen(
+            request.Request(
+                f"{self.base_url}/api/report",
+                method='POST',
+                data=json.dumps({'task_id': 'web-public-sentiment-001', 'domain': 'public_sentiment', 'kind': 'run'}, ensure_ascii=False).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+            ),
+            timeout=20,
+        )
+        payload = json.loads(report_response.read().decode('utf-8'))
+
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['result']['task_payload']['task_id'], 'web-public-sentiment-001')
+        self.assertEqual(payload['result']['run_report']['task_payload']['task_id'], 'web-public-sentiment-001')
+
     def test_form_draft_route_returns_task_payload(self) -> None:
         body = json.dumps(
             {

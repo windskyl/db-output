@@ -160,3 +160,53 @@ class TaskSpec:
             },
             "selection_mode": self.source_policy.selection_mode,
         }
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "task_id": self.task_id,
+            "scenario_template": self.scenario_template,
+            "domain": self.domain,
+            "targets": list(self.targets),
+            "topic_scope": list(self.topic_scope),
+            "time_range": {
+                "start": self.time_range.start,
+                "end": self.time_range.end,
+                "timezone": self.time_range.timezone,
+            },
+            "geo_scope": self.geo_scope,
+            "source_policy": {
+                "whitelist": list(self.source_policy.whitelist),
+                "blacklist": list(self.source_policy.blacklist),
+                "selection_mode": self.source_policy.selection_mode,
+                "prefer_official": self.source_policy.prefer_official,
+                "allow_rss": self.source_policy.allow_rss,
+                "allow_api": self.source_policy.allow_api,
+                "allow_html": self.source_policy.allow_html,
+                "max_sources": self.source_policy.max_sources,
+            },
+            "relevance_policy": {
+                "require_target_match": self.relevance_policy.require_target_match,
+                "require_topic_match": self.relevance_policy.require_topic_match,
+                "require_cooccurrence": self.relevance_policy.require_cooccurrence,
+                "min_relevance_score": self.relevance_policy.min_relevance_score,
+            },
+            "quality_policy": {
+                "required_fields": list(self.quality_policy.required_fields),
+                "dedupe_mode": self.quality_policy.dedupe_mode,
+                "max_missing_ratio": self.quality_policy.max_missing_ratio,
+            },
+            "output_policy": {
+                "writer": self.output_policy.writer,
+                "keep_raw": self.output_policy.keep_raw,
+                "keep_normalized": self.output_policy.keep_normalized,
+                "max_output_records": self.output_policy.max_output_records,
+                "update_mode": self.output_policy.update_mode,
+            },
+            "run_policy": {
+                "max_concurrency": self.run_policy.max_concurrency,
+                "timeout_seconds": self.run_policy.timeout_seconds,
+                "retry_times": self.run_policy.retry_times,
+                "enable_cache": self.run_policy.enable_cache,
+                "allow_browser": self.run_policy.allow_browser,
+            },
+        }

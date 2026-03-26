@@ -23,6 +23,7 @@ class CliTests(unittest.TestCase):
             cwd=ROOT,
             capture_output=True,
             text=True,
+            encoding='utf-8',
             check=False,
             env=ENV,
         )
@@ -90,6 +91,7 @@ class CliTests(unittest.TestCase):
             self.assertIn("cache_dir", payload["artifacts"])
             self.assertEqual(payload["quality_report"]["output_count"], 1)
             self.assertIn("fetch_stats", payload["quality_report"])
+            self.assertEqual(payload["task_payload"]["task_id"], 'job-sample-001')
 
     def test_report_command_includes_public_sentiment_domain_summary(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -116,6 +118,16 @@ class CliTests(unittest.TestCase):
             first_topic = payload['quality_report']['domain_summary']['topics'][0]
             self.assertIn('topic_name', first_topic)
             self.assertIn('dominant_sentiment_label', first_topic)
+    def test_report_command_includes_task_payload_for_run_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.run_cli("--base-dir", temp_dir, "run", str(EXAMPLE_TASK))
+            result = self.run_cli("--base-dir", temp_dir, "report", "job-sample-001", "--kind", "run")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["task_payload"]["task_id"], "job-sample-001")
+            self.assertIn("run_report", payload)
+            self.assertEqual(payload["run_report"]["task_payload"]["task_id"], "job-sample-001")
+
     def test_report_command_can_show_quality_report_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             self.run_cli("--base-dir", temp_dir, "run", str(EXAMPLE_TASK))
@@ -123,6 +135,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             payload = json.loads(result.stdout)
             self.assertEqual(payload["task"]["task_id"], "job-sample-001")
+            self.assertEqual(payload["task_payload"]["task_id"], 'job-sample-001')
             self.assertNotIn("run_report", payload)
             self.assertEqual(payload["quality_report"]["task_id"], "job-sample-001")
 

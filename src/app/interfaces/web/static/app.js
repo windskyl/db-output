@@ -31,6 +31,7 @@ const els = {
   validateBtn: document.getElementById('validateBtn'),
   runBtn: document.getElementById('runBtn'),
   reportBtn: document.getElementById('reportBtn'),
+  downloadTaskBtn: document.getElementById('downloadTaskBtn'),
   resultJson: document.getElementById('resultJson'),
   summaryCards: document.getElementById('summaryCards'),
   selectedSources: document.getElementById('selectedSources'),
@@ -209,12 +210,23 @@ function renderRecentTasks(items) {
     meta.className = 'task-row-meta';
     meta.textContent = `${item.domain} · ${item.status} · output ${item.output_count} · updated ${item.updated_at}`;
     left.append(title, meta);
-    const button = document.createElement('button');
-    button.className = 'ghost-btn';
-    button.type = 'button';
-    button.textContent = 'View report';
-    button.addEventListener('click', () => runAction(() => loadRecentTaskReport(item.task_id, item.domain)));
-    row.append(left, button);
+    const actions = document.createElement('div');
+    actions.className = 'task-row-actions';
+
+    const useBtn = document.createElement('button');
+    useBtn.className = 'ghost-btn';
+    useBtn.type = 'button';
+    useBtn.textContent = 'Use task';
+    useBtn.addEventListener('click', () => runAction(() => loadRecentTaskIntoEditor(item.task_id, item.domain)));
+
+    const reportBtn = document.createElement('button');
+    reportBtn.className = 'ghost-btn';
+    reportBtn.type = 'button';
+    reportBtn.textContent = 'View report';
+    reportBtn.addEventListener('click', () => runAction(() => loadRecentTaskReport(item.task_id, item.domain)));
+
+    actions.append(useBtn, reportBtn);
+    row.append(left, actions);
     els.recentTasks.appendChild(row);
   }
 }
@@ -236,18 +248,27 @@ async function loadRecentTaskReport(taskId, domain) {
   renderResult('report', payload.result);
 }
 
+async function loadRecentTaskIntoEditor(taskId, domain) {
+  const payload = await fetchJson('/api/report', {
+    method: 'POST',
+    body: JSON.stringify({ task_id: taskId, domain, kind: 'run' }),
+  });
+  const taskPayload = payload.result.task_payload || payload.result.run_report?.task_payload;
+  if (!taskPayload) {
+    throw new Error('The stored run does not include a full task payload.');
+  }
+  setTaskEditor(taskPayload);
+  switchTab('json');
+  setStatus('success', 'Task restored');
+  els.resultNarrative.textContent = `Task ${taskId} was restored into the editor. You can validate, adjust, or run it again.`;
+  els.resultJson.textContent = stringifyJson(payload.result);
+}
+
 function renderDomainSummary(summary) {
   els.domainSummary.innerHTML = '';
   if (!summary) {
     els.domainSummary.textContent = 'No domain-specific summary is available yet.';
     return;
-  }
-
-  if (summary.narrative) {
-    const narrative = document.createElement('article');
-    narrative.className = 'topic-card';
-    narrative.innerHTML = `<div class="topic-copy"><p>${summary.narrative}</p></div>`;
-    els.domainSummary.appendChild(narrative);
   }
 
   if (summary.narrative) {
@@ -451,6 +472,20 @@ async function handleRun() {
   await loadRecentTasks();
 }
 
+function downloadCurrentTaskJson() {
+  const task = getTaskFromEditor();
+  const blob = new Blob([stringifyJson(task)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${task.task_id || 'task'}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  setStatus('success', 'Task JSON downloaded');
+}
+
 async function handleReport() {
   const task = getTaskFromEditor();
   const payload = await fetchJson('/api/report', {
@@ -518,6 +553,7 @@ function wireEvents() {
   els.validateBtn.addEventListener('click', () => runAction(handleValidate));
   els.runBtn.addEventListener('click', () => runAction(handleRun));
   els.reportBtn.addEventListener('click', () => runAction(handleReport));
+  els.downloadTaskBtn.addEventListener('click', () => runAction(async () => downloadCurrentTaskJson()));
   els.loadExampleBtn.addEventListener('click', () => runAction(loadExample));
   els.refreshTasksBtn.addEventListener('click', () => runAction(loadRecentTasks));
 }
