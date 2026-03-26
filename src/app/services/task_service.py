@@ -433,10 +433,10 @@ class TaskService:
             "topic_count": len(topics),
             "topics": topics,
             "cards": [
-                {"label": "Topics", "value": len(topics)},
-                {"label": "Posts", "value": total_posts},
+                {"label": "主题数", "value": len(topics)},
+                {"label": "帖子数", "value": total_posts},
             ],
-            "narrative": f"Captured {total_posts} sentiment posts across {len(topics)} topic buckets. The busiest topic is {top_topic or 'N/A'}.",
+            "narrative": f"共采集 {total_posts} 条舆情帖子，覆盖 {len(topics)} 个主题，下方摘要展示了各主题的情绪分布。",
         }
 
     def _build_jobs_domain_summary(self, connection: Any) -> dict[str, Any] | None:
@@ -456,21 +456,21 @@ class TaskService:
         return {
             "kind": "jobs",
             "cards": [
-                {"label": "Postings", "value": posting_count},
-                {"label": "Companies", "value": company_count},
-                {"label": "Skill rows", "value": skill_count},
+                {"label": "岗位数", "value": posting_count},
+                {"label": "公司数", "value": company_count},
+                {"label": "技能条目", "value": skill_count},
             ],
             "sections": [
                 {
-                    "title": "Top companies",
+                    "title": "高频公司",
                     "items": [{"label": row[0], "value": row[1]} for row in company_rows],
                 },
                 {
-                    "title": "Top skills",
+                    "title": "高频技能",
                     "items": [{"label": row[0], "value": row[1]} for row in skill_rows],
                 },
             ],
-            "narrative": f"Found {posting_count} job postings from {company_count} companies. The most visible company is {top_company or 'N/A'} and the most frequent skill is {top_skill or 'N/A'}.",
+            "narrative": f"共汇总 {posting_count} 条岗位信息，涉及 {company_count} 家公司，并提取 {skill_count} 条技能记录。",
         }
 
     def _build_company_intel_domain_summary(self, connection: Any) -> dict[str, Any] | None:
@@ -490,21 +490,21 @@ class TaskService:
         return {
             "kind": "company_intel",
             "cards": [
-                {"label": "Events", "value": event_count},
-                {"label": "Profiles", "value": profile_count},
-                {"label": "Projects", "value": project_count},
+                {"label": "事件数", "value": event_count},
+                {"label": "画像条数", "value": profile_count},
+                {"label": "项目条数", "value": project_count},
             ],
             "sections": [
                 {
-                    "title": "Tracked companies",
+                    "title": "跟踪公司",
                     "items": [{"label": row[0], "value": row[1]} for row in profile_rows],
                 },
                 {
-                    "title": "Top projects",
+                    "title": "高频项目",
                     "items": [{"label": row[0], "value": row[1]} for row in project_rows],
                 },
             ],
-            "narrative": f"Captured {event_count} company-intel events. The strongest profile is {top_company or 'N/A'} and the leading project label is {top_project or 'N/A'}.",
+            "narrative": f"共汇总 {event_count} 条公司情报事件，形成 {profile_count} 条公司画像和 {project_count} 条项目记录。",
         }
 
     def _build_finance_domain_summary(self, connection: Any) -> dict[str, Any] | None:
@@ -524,36 +524,36 @@ class TaskService:
         return {
             "kind": "finance",
             "cards": [
-                {"label": "Events", "value": event_count},
-                {"label": "Instruments", "value": instrument_count},
-                {"label": "Metrics", "value": metric_count},
+                {"label": "事件数", "value": event_count},
+                {"label": "标的数", "value": instrument_count},
+                {"label": "指标条数", "value": metric_count},
             ],
             "sections": [
                 {
-                    "title": "Tracked instruments",
+                    "title": "跟踪标的",
                     "items": [{"label": row[0], "value": row[1] or row[0]} for row in instrument_rows],
                 },
                 {
-                    "title": "Top metrics",
+                    "title": "高频指标",
                     "items": [{"label": row[0], "value": row[1]} for row in metric_rows],
                 },
             ],
-            "narrative": f"Captured {event_count} finance events across {instrument_count} instruments. The leading instrument is {top_instrument or 'N/A'} and the top metric is {top_metric or 'N/A'}.",
+            "narrative": f"共汇总 {event_count} 条金融事件，覆盖 {instrument_count} 个标的，并提取 {metric_count} 条指标记录。",
         }
     def _build_warnings(self, raw_records: list[RawRecord], fetch_stats: dict[str, Any], quality_stats: dict[str, Any]) -> list[str]:
         warnings: list[str] = []
         if raw_records and raw_records[0].source_id == "seed":
-            warnings.append("This run used the local seed fallback because no live source profile produced records.")
+            warnings.append("本次运行未从在线来源获取记录，已使用本地 seed 回退数据。")
         if fetch_stats.get("cache_hits", 0) > 0:
-            warnings.append(f"Fetch cache served {fetch_stats['cache_hits']} request(s).")
+            warnings.append(f"抓取缓存命中了 {fetch_stats['cache_hits']} 次请求。")
         if fetch_stats.get("total_retries", 0) > 0:
-            warnings.append(f"Fetch retries were used for {fetch_stats['total_retries']} attempt(s).")
+            warnings.append(f"抓取阶段共发生 {fetch_stats['total_retries']} 次重试。")
         if quality_stats.get("duplicate_count", 0) > 0:
-            warnings.append(f"Deduplication removed {quality_stats['duplicate_count']} duplicate record(s).")
+            warnings.append(f"去重阶段移除了 {quality_stats['duplicate_count']} 条重复记录。")
         if quality_stats.get("dropped_by_quality", 0) > 0:
-            warnings.append(f"Quality rules dropped {quality_stats['dropped_by_quality']} record(s).")
+            warnings.append(f"质量规则剔除了 {quality_stats['dropped_by_quality']} 条记录。")
         if quality_stats.get("truncated_count", 0) > 0:
-            warnings.append(f"Output was truncated by max_output_records and removed {quality_stats['truncated_count']} record(s).")
+            warnings.append(f"由于 max_output_records 限制，额外截断了 {quality_stats['truncated_count']} 条记录。")
         return warnings
 
     def _primary_entity(self, task: TaskSpec, payload: dict) -> str:
@@ -645,9 +645,9 @@ class TaskService:
     def _resolve_task_run(self, task_id: str, domain: str | None = None) -> dict[str, Any]:
         matches = [item for item in self._load_task_runs(domain=domain) if item["task"].get("task_id") == task_id]
         if not matches:
-            raise FileNotFoundError(f"No run report found for task_id={task_id}")
+            raise FileNotFoundError(f"未找到 task_id={task_id} 的运行报告。")
         if len(matches) > 1:
-            raise TaskValidationError(f"Ambiguous task_id={task_id}; specify --domain to disambiguate.")
+            raise TaskValidationError(f"task_id={task_id} 存在多条记录，请指定 --domain 进行区分。")
         return matches[0]
 
     def _read_json_file(self, path: Path) -> dict[str, Any]:

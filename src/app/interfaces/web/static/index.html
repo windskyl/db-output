@@ -1,187 +1,191 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>db-output Web</title>
+  <title>db-output 本地工作台</title>
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
   <div class="page-shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">db-output Web</p>
-        <h1>Local Rule-Driven Collection Workspace</h1>
-        <p class="hero-copy">Enter requirements, import a local task document, validate and run a task, then review structured results and readable summaries on one page.</p>
+        <p class="eyebrow">db-output 本地工作台</p>
+        <h1>本地规则采集工作台</h1>
+        <p class="hero-copy">在同一个页面里输入需求、导入本地任务文档、校验并运行任务，然后查看结构化结果和易懂摘要。</p>
       </div>
       <div class="hero-note">
-        <h2>Safety Boundary</h2>
-        <p>The web UI only accepts <code>.json</code>, <code>.md</code>, and <code>.txt</code> text files, limits uploads to 300KB, rejects binary content, and never executes uploaded content.</p>
+        <h2>安全边界</h2>
+        <p>网页只接受 <code>.json</code>、<code>.md</code>、<code>.txt</code> 文本文档，上传大小限制为 300KB，会拒绝二进制内容，也不会执行任何上传文件中的代码。</p>
       </div>
     </header>
 
     <main class="workspace">
       <section class="panel input-panel">
         <div class="panel-header">
-          <h2>Task Input</h2>
+          <h2>任务输入</h2>
           <div class="example-row">
-            <label for="exampleSelect">Example task</label>
+            <label for="exampleSelect">示例任务</label>
             <select id="exampleSelect"></select>
-            <button id="loadExampleBtn" class="ghost-btn" type="button">Load example</button>
+            <button id="loadExampleBtn" class="ghost-btn" type="button">载入示例</button>
           </div>
         </div>
 
         <div class="tabs" role="tablist">
-          <button class="tab-btn active" data-tab="form" type="button">Form</button>
-          <button class="tab-btn" data-tab="document" type="button">Document Import</button>
-          <button class="tab-btn" data-tab="json" type="button">Task JSON</button>
+          <button class="tab-btn active" data-tab="form" type="button">表单配置</button>
+          <button class="tab-btn" data-tab="document" type="button">文档导入</button>
+          <button class="tab-btn" data-tab="json" type="button">任务 JSON</button>
         </div>
 
         <div class="tab-panel active" data-tab-panel="form">
           <div class="form-grid">
             <label>
-              <span>Domain</span>
+              <span>领域</span>
               <select id="domainSelect"></select>
             </label>
             <label>
-              <span>Scenario template</span>
-              <input id="scenarioInput" type="text" placeholder="for example company_due_diligence" />
+              <span>场景模板</span>
+              <input id="scenarioInput" type="text" placeholder="例如 company_due_diligence" />
             </label>
             <label>
-              <span>Task ID</span>
-              <input id="taskIdInput" type="text" placeholder="Leave blank to auto-generate" />
+              <span>任务 ID</span>
+              <input id="taskIdInput" type="text" placeholder="留空时自动生成" />
             </label>
             <label>
-              <span>Target type</span>
-              <input id="targetTypeInput" type="text" placeholder="keyword / company / ticker" />
+              <span>目标类型</span>
+              <select id="targetTypeInput">
+                <option value="keyword">关键词</option>
+                <option value="company">公司</option>
+                <option value="ticker">股票代码</option>
+              </select>
             </label>
             <label class="span-2">
-              <span>Target value</span>
-              <input id="targetValueInput" type="text" placeholder="for example OpenAI / Python / IBM" />
+              <span>目标值</span>
+              <input id="targetValueInput" type="text" placeholder="例如 OpenAI / Python / IBM" />
             </label>
             <label>
-              <span>Start date</span>
+              <span>开始日期</span>
               <input id="startDateInput" type="date" />
             </label>
             <label>
-              <span>End date</span>
+              <span>结束日期</span>
               <input id="endDateInput" type="date" />
             </label>
             <label>
-              <span>Timezone</span>
+              <span>时区</span>
               <input id="timezoneInput" type="text" value="UTC" />
             </label>
             <label>
-              <span>Selection mode</span>
+              <span>来源选择方式</span>
               <select id="selectionModeSelect">
-                <option value="auto">auto</option>
-                <option value="explicit">explicit</option>
+                <option value="auto">自动</option>
+                <option value="explicit">显式指定</option>
               </select>
             </label>
             <label>
-              <span>Min relevance</span>
+              <span>最小相关度</span>
               <input id="minRelevanceInput" type="number" value="0.6" min="0" max="1" step="0.1" />
             </label>
             <label>
-              <span>Max sources</span>
+              <span>最大来源数</span>
               <input id="maxSourcesInput" type="number" value="3" min="1" step="1" />
             </label>
             <label>
-              <span>Max output rows</span>
+              <span>最大输出条数</span>
               <input id="maxOutputInput" type="number" value="1000" min="1" step="1" />
             </label>
           </div>
 
           <div class="field-block">
-            <div class="field-title">Topic scope</div>
+            <div class="field-title">主题范围</div>
             <div id="topicOptions" class="chip-grid"></div>
           </div>
 
           <div class="field-block">
-            <div class="field-title">Source whitelist</div>
+            <div class="field-title">来源白名单</div>
             <select id="sourceWhitelist" multiple size="6"></select>
-            <p class="field-help">These source IDs only apply when <code>selection_mode=explicit</code>.</p>
+            <p class="field-help">仅当 <code>selection_mode=explicit</code> 时生效。</p>
           </div>
 
           <div class="toggle-row">
             <label><input id="allowHtmlInput" type="checkbox" checked /> HTML</label>
             <label><input id="allowRssInput" type="checkbox" checked /> RSS</label>
             <label><input id="allowApiInput" type="checkbox" checked /> API</label>
-            <label><input id="preferOfficialInput" type="checkbox" /> Prefer official sources</label>
-            <label><input id="enableCacheInput" type="checkbox" /> Enable cache</label>
+            <label><input id="preferOfficialInput" type="checkbox" /> 优先官方来源</label>
+            <label><input id="enableCacheInput" type="checkbox" /> 启用缓存</label>
           </div>
 
-          <button id="buildFromFormBtn" class="primary-btn" type="button">Build task draft</button>
+          <button id="buildFromFormBtn" class="primary-btn" type="button">生成任务草稿</button>
         </div>
 
         <div class="tab-panel" data-tab-panel="document">
           <div class="upload-box">
             <input id="documentInput" type="file" accept=".json,.md,.txt" />
-            <button id="importDocumentBtn" class="primary-btn" type="button">Import safely and build draft</button>
+            <button id="importDocumentBtn" class="primary-btn" type="button">安全导入并生成草稿</button>
           </div>
-          <p class="field-help">You can import a task JSON directly, or import Markdown/Text and let the server extract a draft task. Non-JSON text is treated as plain text only.</p>
+          <p class="field-help">可以直接导入任务 JSON，也可以导入 Markdown/Text 文档让服务端提取任务草稿。非 JSON 文本只按纯文本解析，不会执行其中任何内容。</p>
           <div class="preview-box">
-            <div class="preview-head">Document preview</div>
-            <pre id="documentPreview">No document imported yet.</pre>
+            <div class="preview-head">文档预览</div>
+            <pre id="documentPreview">尚未导入文档。</pre>
           </div>
         </div>
 
         <div class="tab-panel" data-tab-panel="json">
-          <label class="editor-label" for="taskJsonEditor">Task JSON</label>
+          <label class="editor-label" for="taskJsonEditor">任务 JSON</label>
           <textarea id="taskJsonEditor" spellcheck="false"></textarea>
         </div>
 
         <div class="action-bar">
-          <button id="validateBtn" class="ghost-btn" type="button">Validate task</button>
-          <button id="runBtn" class="primary-btn" type="button">Run task</button>
-          <button id="reportBtn" class="ghost-btn" type="button">Load quality report</button>
-          <button id="downloadTaskBtn" class="ghost-btn" type="button">Download task JSON</button>
+          <button id="validateBtn" class="ghost-btn" type="button">校验任务</button>
+          <button id="runBtn" class="primary-btn" type="button">运行任务</button>
+          <button id="reportBtn" class="ghost-btn" type="button">加载质量报告</button>
+          <button id="downloadTaskBtn" class="ghost-btn" type="button">下载任务 JSON</button>
         </div>
       </section>
 
       <section class="panel output-panel">
         <div class="panel-header">
-          <h2>Result View</h2>
-          <p id="statusBadge" class="status-badge idle">Idle</p>
+          <h2>结果查看</h2>
+          <p id="statusBadge" class="status-badge idle">空闲</p>
         </div>
 
         <section class="result-section">
-          <h3>Readable summary</h3>
-          <div id="resultNarrative" class="narrative-card">This area will explain validation, execution, or reporting results in plain language.</div>
+          <h3>可读摘要</h3>
+          <div id="resultNarrative" class="narrative-card">这里会用易懂文字说明校验、运行或报告结果。</div>
         </section>
 
         <section class="result-section">
-          <h3>Summary cards</h3>
+          <h3>摘要卡片</h3>
           <div id="summaryCards" class="summary-grid"></div>
         </section>
 
         <section class="result-section">
-          <h3>Domain summary</h3>
+          <h3>领域摘要</h3>
           <div id="domainSummary" class="domain-summary"></div>
         </section>
 
         <section class="result-section split-section">
           <div>
-            <h3>Selected sources</h3>
+            <h3>已选来源</h3>
             <div id="selectedSources" class="list-card"></div>
           </div>
           <div>
-            <h3>Artifact paths</h3>
+            <h3>产物路径</h3>
             <div id="artifactPaths" class="list-card"></div>
           </div>
         </section>
 
         <section class="result-section">
           <div class="section-head-row">
-            <h3>Recent runs</h3>
-            <button id="refreshTasksBtn" class="ghost-btn" type="button">Refresh list</button>
+            <h3>最近运行</h3>
+            <button id="refreshTasksBtn" class="ghost-btn" type="button">刷新列表</button>
           </div>
           <div id="recentTasks" class="task-history"></div>
         </section>
 
         <section class="result-section">
-          <h3>Raw response</h3>
-          <pre id="resultJson">No result yet.</pre>
+          <h3>原始响应</h3>
+          <pre id="resultJson">暂无结果。</pre>
         </section>
       </section>
     </main>

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import mimetypes
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -29,9 +28,9 @@ class WebApplication:
         self.base_dir = base_dir
         self.service = TaskService(base_dir=base_dir)
         self.domain_registry = DomainRegistry()
-        self.source_registry = SourceRegistry(config_root=Path(__file__).resolve().parents[4] / "configs" / "sources")
-        self.example_dir = Path(__file__).resolve().parents[4] / "tasks" / "examples"
-        self.static_dir = Path(__file__).resolve().parent / "static"
+        self.source_registry = SourceRegistry(config_root=Path(__file__).resolve().parents[4] / 'configs' / 'sources')
+        self.example_dir = Path(__file__).resolve().parents[4] / 'tasks' / 'examples'
+        self.static_dir = Path(__file__).resolve().parent / 'static'
 
     def metadata(self) -> dict[str, Any]:
         domains = []
@@ -39,19 +38,19 @@ class WebApplication:
             plugin = self.domain_registry.get(name)
             domains.append(
                 {
-                    "name": name,
-                    "topics": sorted(plugin.allowed_topics),
+                    'name': name,
+                    'topics': sorted(plugin.allowed_topics),
                 }
             )
         sources = {}
         for profile in self.source_registry.list_profiles():
             sources.setdefault(profile.domain, []).append(profile.to_summary())
         for items in sources.values():
-            items.sort(key=lambda item: item["source_id"])
+            items.sort(key=lambda item: item['source_id'])
         return {
-            "domains": domains,
-            "sources": sources,
-            "examples": summarize_example_tasks(self.example_dir),
+            'domains': domains,
+            'sources': sources,
+            'examples': summarize_example_tasks(self.example_dir),
         }
 
     def load_example(self, name: str) -> dict[str, Any]:
@@ -65,91 +64,98 @@ class WebApplication:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="db-output-web", description="Local web UI for db-output")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind the local web server")
-    parser.add_argument("--port", type=int, default=8765, help="Port to bind the local web server")
-    parser.add_argument("--base-dir", default="data", help="Base directory for raw/normalized/artifacts output")
+    parser = argparse.ArgumentParser(prog='db-output-web', description='db-output 本地 Web 工作台')
+    parser.add_argument('--host', default='127.0.0.1', help='本地 Web 服务监听地址')
+    parser.add_argument('--port', type=int, default=8765, help='本地 Web 服务监听端口')
+    parser.add_argument('--base-dir', default='data', help='原始数据、归一化结果和产物的根目录')
     return parser
 
 
 def make_handler(app: WebApplication) -> type[BaseHTTPRequestHandler]:
     class WebHandler(BaseHTTPRequestHandler):
-        server_version = "db-output-web/0.1"
+        server_version = 'db-output-web/0.1'
 
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path == "/":
-                self._send_static("index.html", "text/html; charset=utf-8")
+            if parsed.path == '/':
+                self._send_static('index.html', 'text/html; charset=utf-8')
                 return
-            if parsed.path == "/app.css":
-                self._send_static("app.css", "text/css; charset=utf-8")
+            if parsed.path == '/app.css':
+                self._send_static('app.css', 'text/css; charset=utf-8')
                 return
-            if parsed.path == "/app.js":
-                self._send_static("app.js", "application/javascript; charset=utf-8")
+            if parsed.path == '/app.js':
+                self._send_static('app.js', 'application/javascript; charset=utf-8')
                 return
-            if parsed.path == "/api/meta":
-                self._send_json({"ok": True, "meta": app.metadata()})
+            if parsed.path == '/api/meta':
+                self._send_json({'ok': True, 'meta': app.metadata()})
                 return
-            if parsed.path == "/api/example":
+            if parsed.path == '/api/example':
                 params = parse_qs(parsed.query)
-                name = params.get("name", [""])[0]
+                name = params.get('name', [''])[0]
                 if not name:
-                    self._send_error_json(HTTPStatus.BAD_REQUEST, "example name is required")
+                    self._send_error_json(HTTPStatus.BAD_REQUEST, '必须提供示例任务名称。')
                     return
                 try:
                     payload = app.load_example(name)
                 except FileNotFoundError as exc:
                     self._send_error_json(HTTPStatus.NOT_FOUND, str(exc))
                     return
-                self._send_json({"ok": True, "task": payload})
+                self._send_json({'ok': True, 'task': payload})
                 return
-            self._send_error_json(HTTPStatus.NOT_FOUND, "route not found")
+            self._send_error_json(HTTPStatus.NOT_FOUND, '接口不存在。')
 
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
             try:
                 payload = self._read_json_body()
-                if parsed.path == "/api/draft/form":
+                if parsed.path == '/api/draft/form':
                     task_payload = app.build_task_from_form(payload)
-                    self._send_json({"ok": True, "task": task_payload})
+                    self._send_json({'ok': True, 'task': task_payload})
                     return
-                if parsed.path == "/api/draft/document":
-                    file_name = str(payload.get("file_name", ""))
-                    content = str(payload.get("content", ""))
+                if parsed.path == '/api/draft/document':
+                    file_name = str(payload.get('file_name', ''))
+                    content = str(payload.get('content', ''))
                     result = app.import_document(file_name, content)
-                    self._send_json({"ok": True, **result})
+                    self._send_json({'ok': True, **result})
                     return
-                if parsed.path == "/api/validate":
-                    task = TaskSpec.from_dict(dict(payload.get("task", {})))
-                    self._send_json({"ok": True, "result": app.service.validate_task(task)})
+                if parsed.path == '/api/validate':
+                    task = TaskSpec.from_dict(dict(payload.get('task', {})))
+                    self._send_json({'ok': True, 'result': app.service.validate_task(task)})
                     return
-                if parsed.path == "/api/run":
-                    task = TaskSpec.from_dict(dict(payload.get("task", {})))
-                    self._send_json({"ok": True, "result": app.service.run_task(task)})
+                if parsed.path == '/api/run':
+                    task = TaskSpec.from_dict(dict(payload.get('task', {})))
+                    self._send_json({'ok': True, 'result': app.service.run_task(task)})
                     return
-                if parsed.path == "/api/status":
-                    task_id = str(payload.get("task_id", "")).strip()
+                if parsed.path == '/api/status':
+                    task_id = str(payload.get('task_id', '')).strip()
                     if not task_id:
-                        raise WebInputError("task_id is required")
-                    domain = str(payload.get("domain", "") or "").strip() or None
-                    self._send_json({"ok": True, "result": app.service.get_task_status(task_id=task_id, domain=domain)})
+                        raise WebInputError('必须提供 task_id。')
+                    domain = str(payload.get('domain', '') or '').strip() or None
+                    self._send_json({'ok': True, 'result': app.service.get_task_status(task_id=task_id, domain=domain)})
                     return
-                if parsed.path == "/api/report":
-                    task_id = str(payload.get("task_id", "")).strip()
+                if parsed.path == '/api/task':
+                    task_id = str(payload.get('task_id', '')).strip()
                     if not task_id:
-                        raise WebInputError("task_id is required")
-                    domain = str(payload.get("domain", "") or "").strip() or None
-                    kind = str(payload.get("kind", "all") or "all")
-                    self._send_json({"ok": True, "result": app.service.get_task_report(task_id=task_id, domain=domain, kind=kind)})
+                        raise WebInputError('必须提供 task_id。')
+                    domain = str(payload.get('domain', '') or '').strip() or None
+                    self._send_json({'ok': True, 'result': app.service.get_task_status(task_id=task_id, domain=domain)})
                     return
-                if parsed.path == "/api/tasks":
-                    domain = str(payload.get("domain", "") or "").strip() or None
-                    status = str(payload.get("status", "") or "").strip() or None
-                    limit_value = payload.get("limit")
-                    limit = int(limit_value) if limit_value not in {None, ""} else None
-                    self._send_json({"ok": True, "result": app.service.list_task_runs(domain=domain, status=status, limit=limit)})
+                if parsed.path == '/api/report':
+                    task_id = str(payload.get('task_id', '')).strip()
+                    if not task_id:
+                        raise WebInputError('必须提供 task_id。')
+                    domain = str(payload.get('domain', '') or '').strip() or None
+                    kind = str(payload.get('kind', 'all') or 'all')
+                    self._send_json({'ok': True, 'result': app.service.get_task_report(task_id=task_id, domain=domain, kind=kind)})
                     return
-                self._send_error_json(HTTPStatus.NOT_FOUND, "route not found")
+                if parsed.path == '/api/tasks':
+                    domain = str(payload.get('domain', '') or '').strip() or None
+                    status = str(payload.get('status', '') or '').strip() or None
+                    limit_value = payload.get('limit')
+                    limit = int(limit_value) if limit_value not in {None, ''} else None
+                    self._send_json({'ok': True, 'result': app.service.list_task_runs(domain=domain, status=status, limit=limit)})
+                    return
+                self._send_error_json(HTTPStatus.NOT_FOUND, '接口不存在。')
             except (json.JSONDecodeError, WebInputError, TaskValidationError, FileNotFoundError, ValueError) as exc:
                 self._send_error_json(HTTPStatus.BAD_REQUEST, str(exc))
             except Exception as exc:  # pragma: no cover - safety net for the local tool server
@@ -159,22 +165,22 @@ def make_handler(app: WebApplication) -> type[BaseHTTPRequestHandler]:
             return
 
         def _read_json_body(self) -> dict[str, Any]:
-            length_header = self.headers.get("Content-Length", "0")
+            length_header = self.headers.get('Content-Length', '0')
             try:
                 content_length = int(length_header)
             except ValueError as exc:
-                raise WebInputError("invalid Content-Length") from exc
+                raise WebInputError('Content-Length 不合法。') from exc
             if content_length < 1:
-                raise WebInputError("request body is required")
+                raise WebInputError('请求体不能为空。')
             if content_length > MAX_REQUEST_BYTES:
-                raise WebInputError(f"request body too large: {content_length} bytes")
+                raise WebInputError(f'请求体过大：{content_length} bytes')
             raw = self.rfile.read(content_length)
-            return json.loads(raw.decode("utf-8"))
+            return json.loads(raw.decode('utf-8'))
 
         def _send_static(self, name: str, content_type: str) -> None:
             path = app.static_dir / name
             if not path.exists():
-                self._send_error_json(HTTPStatus.NOT_FOUND, f"static file not found: {name}")
+                self._send_error_json(HTTPStatus.NOT_FOUND, f'静态文件不存在：{name}')
                 return
             payload = path.read_bytes()
             self.send_response(HTTPStatus.OK)
@@ -183,21 +189,21 @@ def make_handler(app: WebApplication) -> type[BaseHTTPRequestHandler]:
             self.wfile.write(payload)
 
         def _send_json(self, payload: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
-            raw = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+            raw = json.dumps(payload, ensure_ascii=False, indent=2).encode('utf-8')
             self.send_response(status)
-            self._send_common_headers(content_type="application/json; charset=utf-8", content_length=len(raw))
+            self._send_common_headers(content_type='application/json; charset=utf-8', content_length=len(raw))
             self.end_headers()
             self.wfile.write(raw)
 
         def _send_error_json(self, status: HTTPStatus, message: str) -> None:
-            self._send_json({"ok": False, "error": message}, status=status)
+            self._send_json({'ok': False, 'error': message}, status=status)
 
         def _send_common_headers(self, *, content_type: str, content_length: int) -> None:
-            self.send_header("Content-Type", content_type)
-            self.send_header("Content-Length", str(content_length))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
+            self.send_header('Content-Type', content_type)
+            self.send_header('Content-Length', str(content_length))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 
     return WebHandler
 
@@ -208,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     app = WebApplication(base_dir=Path(args.base_dir))
     handler = make_handler(app)
     server = ThreadingHTTPServer((args.host, args.port), handler)
-    print(f"db-output web available at http://{args.host}:{args.port}")
+    print(f'db-output Web 已启动：http://{args.host}:{args.port}')
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -218,5 +224,5 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())

@@ -20,7 +20,7 @@ class WebServerTests(unittest.TestCase):
         self.server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(self.app))
         self.thread = Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
-        self.base_url = f"http://127.0.0.1:{self.server.server_address[1]}"
+        self.base_url = f'http://127.0.0.1:{self.server.server_address[1]}'
 
     def tearDown(self) -> None:
         self.server.shutdown()
@@ -29,22 +29,22 @@ class WebServerTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_meta_and_home_routes_work(self) -> None:
-        meta_text = request.urlopen(f"{self.base_url}/api/meta", timeout=10).read().decode('utf-8')
-        html_text = request.urlopen(f"{self.base_url}/", timeout=10).read().decode('utf-8')
+        meta_text = request.urlopen(f'{self.base_url}/api/meta', timeout=10).read().decode('utf-8')
+        html_text = request.urlopen(f'{self.base_url}/', timeout=10).read().decode('utf-8')
 
         meta_payload = json.loads(meta_text)
         self.assertTrue(meta_payload['ok'])
         self.assertIn('domains', meta_payload['meta'])
         self.assertIn('examples', meta_payload['meta'])
-        self.assertIn('db-output Web', html_text)
-        self.assertIn('Task Input', html_text)
-        self.assertIn('Recent runs', html_text)
+        self.assertIn('db-output 本地工作台', html_text)
+        self.assertIn('任务输入', html_text)
+        self.assertIn('最近运行', html_text)
 
     def test_tasks_route_returns_empty_list_for_fresh_base_dir(self) -> None:
         body = json.dumps({'limit': 5}, ensure_ascii=False).encode('utf-8')
         response = request.urlopen(
             request.Request(
-                f"{self.base_url}/api/tasks",
+                f'{self.base_url}/api/tasks',
                 method='POST',
                 data=body,
                 headers={'Content-Type': 'application/json'},
@@ -72,7 +72,7 @@ class WebServerTests(unittest.TestCase):
         }
         run_response = request.urlopen(
             request.Request(
-                f"{self.base_url}/api/run",
+                f'{self.base_url}/api/run',
                 method='POST',
                 data=json.dumps({'task': task}, ensure_ascii=False).encode('utf-8'),
                 headers={'Content-Type': 'application/json'},
@@ -83,7 +83,7 @@ class WebServerTests(unittest.TestCase):
 
         report_response = request.urlopen(
             request.Request(
-                f"{self.base_url}/api/report",
+                f'{self.base_url}/api/report',
                 method='POST',
                 data=json.dumps({'task_id': 'web-public-sentiment-001', 'domain': 'public_sentiment', 'kind': 'run'}, ensure_ascii=False).encode('utf-8'),
                 headers={'Content-Type': 'application/json'},
@@ -95,6 +95,41 @@ class WebServerTests(unittest.TestCase):
         self.assertTrue(payload['ok'])
         self.assertEqual(payload['result']['task_payload']['task_id'], 'web-public-sentiment-001')
         self.assertEqual(payload['result']['run_report']['task_payload']['task_id'], 'web-public-sentiment-001')
+
+    def test_task_route_exposes_full_task_payload_for_reuse(self) -> None:
+        task = {
+            'task_id': 'web-jobs-001',
+            'domain': 'jobs',
+            'targets': [{'type': 'keyword', 'value': 'Python'}],
+            'topic_scope': ['backend'],
+            'time_range': {'start': '2026-03-01T00:00:00', 'end': '2026-03-20T00:00:00', 'timezone': 'UTC'},
+            'source_policy': {'selection_mode': 'explicit', 'whitelist': ['python_org_jobs_rss']},
+        }
+        run_response = request.urlopen(
+            request.Request(
+                f'{self.base_url}/api/run',
+                method='POST',
+                data=json.dumps({'task': task}, ensure_ascii=False).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+            ),
+            timeout=20,
+        )
+        self.assertEqual(json.loads(run_response.read().decode('utf-8'))['ok'], True)
+
+        task_response = request.urlopen(
+            request.Request(
+                f'{self.base_url}/api/task',
+                method='POST',
+                data=json.dumps({'task_id': 'web-jobs-001', 'domain': 'jobs'}, ensure_ascii=False).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+            ),
+            timeout=20,
+        )
+        payload = json.loads(task_response.read().decode('utf-8'))
+
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['result']['task_payload']['task_id'], 'web-jobs-001')
+        self.assertEqual(payload['result']['task_payload']['targets'][0]['value'], 'Python')
 
     def test_form_draft_route_returns_task_payload(self) -> None:
         body = json.dumps(
@@ -110,7 +145,7 @@ class WebServerTests(unittest.TestCase):
         ).encode('utf-8')
         response = request.urlopen(
             request.Request(
-                f"{self.base_url}/api/draft/form",
+                f'{self.base_url}/api/draft/form',
                 method='POST',
                 data=body,
                 headers={'Content-Type': 'application/json'},

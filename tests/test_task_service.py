@@ -88,8 +88,8 @@ class TaskServiceQualityTests(unittest.TestCase):
             self.assertEqual(quality_report["output_count"], 1)
             self.assertEqual(quality_report["dropped_by_quality"], 1)
             self.assertEqual(quality_report["missing_field_stats"], {"company": 1})
-            self.assertIn("Deduplication removed 1 duplicate record(s).", quality_report["warnings"])
-            self.assertIn("Quality rules dropped 1 record(s).", quality_report["warnings"])
+            self.assertIn("去重阶段移除了 1 条重复记录。", quality_report["warnings"])
+            self.assertIn("质量规则剔除了 1 条记录。", quality_report["warnings"])
 
             with gzip.open(result["artifacts"]["normalized_file"], "rt", encoding="utf-8") as handle:
                 normalized_rows = [json.loads(line) for line in handle]

@@ -78,12 +78,11 @@ class DomainSummaryTests(unittest.TestCase):
 
             self.assertEqual(summary['kind'], 'jobs')
             self.assertEqual(summary['cards'][0]['value'], 2)
-            self.assertEqual(summary['sections'][0]['title'], 'Top companies')
+            self.assertEqual(summary['sections'][0]['title'], '高频公司')
             self.assertEqual(summary['sections'][0]['items'][0]['label'], 'Acme')
-            self.assertEqual(summary['sections'][1]['title'], 'Top skills')
+            self.assertEqual(summary['sections'][1]['title'], '高频技能')
             self.assertEqual(summary['sections'][1]['items'][0]['label'], 'Python')
-            self.assertIn('job postings', summary['narrative'])
-            self.assertIn('job postings', summary['narrative'])
+            self.assertIn('岗位信息', summary['narrative'])
 
     def test_company_intel_domain_summary_includes_top_projects(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -112,8 +111,8 @@ class DomainSummaryTests(unittest.TestCase):
                     collected_at='2026-03-24T00:00:00+00:00',
                     primary_entity='奇安信',
                     topic_tags=['product_update', 'tech_blog'],
-                    title='奇安信发布“龙虾安全伴侣”，破解企业“想用不敢用”难题',
-                    content_text='OpenClaw 与 SAFESKILL 平台提供新的智能体安全方案。',
+                    title='奇安信发布 OpenClaw 安全平台',
+                    content_text='OpenClaw 与 SAFESKILL 提供新的安全能力。',
                     relevance_score=0.7,
                     extra={},
                 ),
@@ -134,12 +133,11 @@ class DomainSummaryTests(unittest.TestCase):
             summary = service._build_domain_report_summary('company_intel', Path(artifacts.sqlite_file))
 
             self.assertEqual(summary['kind'], 'company_intel')
-            self.assertEqual(summary['sections'][0]['title'], 'Tracked companies')
+            self.assertEqual(summary['sections'][0]['title'], '跟踪公司')
             self.assertEqual(summary['sections'][0]['items'][0]['label'], '奇安信')
-            self.assertEqual(summary['sections'][1]['title'], 'Top projects')
+            self.assertEqual(summary['sections'][1]['title'], '高频项目')
             self.assertEqual(summary['sections'][1]['items'][0]['label'], 'OpenClaw')
-            self.assertIn('company-intel events', summary['narrative'])
-            self.assertIn('company-intel events', summary['narrative'])
+            self.assertIn('公司情报事件', summary['narrative'])
 
     def test_finance_domain_summary_includes_metrics_and_instruments(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -191,12 +189,11 @@ class DomainSummaryTests(unittest.TestCase):
 
             self.assertEqual(summary['kind'], 'finance')
             self.assertEqual(summary['cards'][0]['value'], 1)
-            self.assertEqual(summary['sections'][0]['title'], 'Tracked instruments')
+            self.assertEqual(summary['sections'][0]['title'], '跟踪标的')
             self.assertEqual(summary['sections'][0]['items'][0]['label'], 'IBM')
-            self.assertEqual(summary['sections'][1]['title'], 'Top metrics')
+            self.assertEqual(summary['sections'][1]['title'], '高频指标')
             self.assertEqual(summary['sections'][1]['items'][0]['label'], 'close')
-            self.assertIn('finance events', summary['narrative'])
-            self.assertIn('finance events', summary['narrative'])
+            self.assertIn('金融事件', summary['narrative'])
 
 
 if __name__ == '__main__':
