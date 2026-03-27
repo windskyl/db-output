@@ -34,7 +34,7 @@
         <div class="tabs" role="tablist">
           <button class="tab-btn active" data-tab="form" type="button">表单配置</button>
           <button class="tab-btn" data-tab="document" type="button">文档导入</button>
-          <button class="tab-btn" data-tab="json" type="button">任务 JSON</button>
+          <button class="tab-btn" data-tab="json" type="button">????</button>
         </div>
 
         <div class="tab-panel active" data-tab-panel="form">
@@ -44,9 +44,15 @@
               <select id="domainSelect"></select>
             </label>
             <label>
-              <span>场景模板</span>
-              <input id="scenarioInput" type="text" placeholder="例如 company_due_diligence" />
-            </label>
+<label>
+  <span>????</span>
+  <select id="scenarioInput">
+    <option value="job_hunt_engineering_basic">??????</option>
+    <option value="company_due_diligence">??????</option>
+    <option value="investment_market_quote_basic">??????</option>
+    <option value="company_sentiment_tracking_basic">??????</option>
+  </select>
+</label>
             <label>
               <span>任务 ID</span>
               <input id="taskIdInput" type="text" placeholder="留空时自动生成" />
@@ -102,22 +108,22 @@
           </div>
 
           <div class="field-block">
-            <div class="field-title">来源白名单</div>
-            <select id="sourceWhitelist" multiple size="6"></select>
-            <p class="field-help">仅当 <code>selection_mode=explicit</code> 时生效。</p>
+            <label><input id="allowHtmlInput" type="checkbox" checked /> HTML ??</label>
+            <label><input id="allowRssInput" type="checkbox" checked /> RSS ??</label>
+            <label><input id="allowApiInput" type="checkbox" checked /> API ??</label>
           </div>
 
           <div class="toggle-row">
-            <label><input id="allowHtmlInput" type="checkbox" checked /> HTML</label>
-            <label><input id="allowRssInput" type="checkbox" checked /> RSS</label>
-            <label><input id="allowApiInput" type="checkbox" checked /> API</label>
+            <label><input id="allowHtmlInput" type="checkbox" checked /> HTML ??</label>
+            <label><input id="allowRssInput" type="checkbox" checked /> RSS ??</label>
+            <label><input id="allowApiInput" type="checkbox" checked /> API ??</label>
             <label><input id="preferOfficialInput" type="checkbox" /> 优先官方来源</label>
             <label><input id="enableCacheInput" type="checkbox" /> 启用缓存</label>
           </div>
 
           <button id="buildFromFormBtn" class="primary-btn" type="button">生成任务草稿</button>
         </div>
-
+          <p class="field-help">?????????????????? Markdown/Text ??????????????????????????????????????</p>
         <div class="tab-panel" data-tab-panel="document">
           <div class="upload-box">
             <input id="documentInput" type="file" accept=".json,.md,.txt" />
@@ -125,7 +131,7 @@
           </div>
           <p class="field-help">可以直接导入任务 JSON，也可以导入 Markdown/Text 文档让服务端提取任务草稿。非 JSON 文本只按纯文本解析，不会执行其中任何内容。</p>
           <div class="preview-box">
-            <div class="preview-head">文档预览</div>
+          <label class="editor-label" for="taskJsonEditor">????</label>
             <pre id="documentPreview">尚未导入文档。</pre>
           </div>
         </div>
@@ -133,7 +139,7 @@
         <div class="tab-panel" data-tab-panel="json">
           <label class="editor-label" for="taskJsonEditor">任务 JSON</label>
           <textarea id="taskJsonEditor" spellcheck="false"></textarea>
-        </div>
+          <button id="downloadTaskBtn" class="ghost-btn" type="button">??????</button>
 
         <div class="action-bar">
           <button id="validateBtn" class="ghost-btn" type="button">校验任务</button>
@@ -148,10 +154,21 @@
           <h2>结果查看</h2>
           <p id="statusBadge" class="status-badge idle">空闲</p>
         </div>
+<section class="result-section split-section">
+  <div>
+    <h3>????</h3>
+    <div id="taskOverview" class="list-card"></div>
+  </div>
+  <div>
+    <h3>????</h3>
+    <div id="qualityWarnings" class="list-card"></div>
+  </div>
+</section>
 
-        <section class="result-section">
-          <h3>可读摘要</h3>
-          <div id="resultNarrative" class="narrative-card">这里会用易懂文字说明校验、运行或报告结果。</div>
+<section class="result-section">
+  <h3>????</h3>
+  <div id="summaryCards" class="summary-grid"></div>
+</section>
         </section>
 
         <section class="result-section">

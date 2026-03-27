@@ -63,9 +63,22 @@ const ARTIFACT_LABELS = {
 };
 
 const IMPORT_MODE_LABELS = {
-  json: 'JSON',
-  json_block: 'JSON 代码块',
-  heuristic: '启发式解析',
+  json: '?????',
+  json_block: '?????',
+  heuristic: '?????',
+};
+
+const TARGET_TYPE_LABELS = {
+  keyword: '???',
+  company: '??',
+  ticker: '????',
+};
+
+const SCENARIO_LABELS = {
+  job_hunt_engineering_basic: '??????',
+  company_due_diligence: '??????',
+  investment_market_quote_basic: '??????',
+  company_sentiment_tracking_basic: '??????',
 };
 
 const state = {
@@ -107,6 +120,8 @@ const els = {
   selectedSources: document.getElementById('selectedSources'),
   artifactPaths: document.getElementById('artifactPaths'),
   domainSummary: document.getElementById('domainSummary'),
+  taskOverview: document.getElementById('taskOverview'),
+  qualityWarnings: document.getElementById('qualityWarnings'),
   resultNarrative: document.getElementById('resultNarrative'),
   statusBadge: document.getElementById('statusBadge'),
   exampleSelect: document.getElementById('exampleSelect'),
@@ -146,7 +161,51 @@ function formatArtifactText(key, value) {
 }
 
 function formatImportMode(mode) {
-  return IMPORT_MODE_LABELS[mode] || mode || '未知模式';
+  return IMPORT_MODE_LABELS[mode] || mode || '????';
+}
+
+function formatTargetTypeLabel(value) {
+  return TARGET_TYPE_LABELS[value] || value || '????';
+}
+
+function formatScenarioLabel(value) {
+  return SCENARIO_LABELS[value] || value || '????';
+}
+
+function formatSelectionMode(value) {
+  return value === 'explicit' ? '????' : '????';
+}
+
+function ensureSelectOption(select, value, label) {
+  if (!select || !value) {
+    return;
+  }
+  const exists = Array.from(select.options || []).some((option) => option.value === value);
+  if (exists) {
+    return;
+  }
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = label;
+  select.appendChild(option);
+}
+
+function safeTaskFromEditor() {
+  try {
+    return getTaskFromEditor();
+  } catch (_error) {
+    return null;
+  }
+}
+
+function formatTimeRange(timeRange) {
+  if (!timeRange) {
+    return '???';
+  }
+  const start = (timeRange.start || '').slice(0, 10) || '???';
+  const end = (timeRange.end || '').slice(0, 10) || '???';
+  const timezone = timeRange.timezone || 'UTC';
+  return `${start} ? ${end}?${timezone}?`;
 }
 
 function setStatus(kind, text) {
@@ -328,7 +387,7 @@ function renderSummaryCards(cards) {
 function renderListCard(container, items) {
   container.innerHTML = '';
   if (!items.length) {
-    container.textContent = '暂无内容。';
+    container.textContent = '?????';
     return;
   }
   const list = document.createElement('ul');
@@ -338,6 +397,72 @@ function renderListCard(container, items) {
     list.appendChild(li);
   }
   container.appendChild(list);
+}
+
+function resolveTaskPayload(result) {
+  if (result?.task_payload) {
+    return result.task_payload;
+  }
+  if (result?.run_report?.task_payload) {
+    return result.run_report.task_payload;
+  }
+  return safeTaskFromEditor();
+}
+
+function renderTaskOverview(task, result, emptyText = '?????????????????????????') {
+  els.taskOverview.innerHTML = '';
+  if (!task) {
+    els.taskOverview.textContent = emptyText;
+    return;
+  }
+  const selectedSources = result?.selected_source_details || result?.selected_sources || [];
+  const targets = Array.isArray(task.targets) && task.targets.length
+    ? task.targets.map((item) => `${formatTargetTypeLabel(item.type)}?${item.value || '???'}`).join('?')
+    : `${task.target_count || 0} ???`;
+  const topics = Array.isArray(task.topic_scope) && task.topic_scope.length
+    ? task.topic_scope.map((topic) => formatTopicLabel(task.domain, topic)).join('?')
+    : '???';
+  const rows = [
+    { label: '?? ID', value: task.task_id || '?????' },
+    { label: '??', value: formatDomainLabel(task.domain) },
+    { label: '????', value: formatScenarioLabel(task.scenario_template) },
+    { label: '??', value: targets },
+    { label: '????', value: formatTimeRange(task.time_range) },
+    { label: '????', value: topics },
+    { label: '????', value: task.source_policy ? `${formatSelectionMode(task.source_policy.selection_mode)}??? ${selectedSources.length} ???` : `?? ${selectedSources.length} ???` },
+    { label: '????', value: task.run_policy?.enable_cache ? '????' : '?????' },
+  ];
+  const wrapper = document.createElement('div');
+  wrapper.className = 'detail-list';
+  for (const row of rows) {
+    const item = document.createElement('div');
+    item.className = 'detail-row';
+    item.innerHTML = '<div class="detail-label"></div><div class="detail-value"></div>';
+    item.querySelector('.detail-label').textContent = row.label;
+    item.querySelector('.detail-value').textContent = row.value;
+    wrapper.appendChild(item);
+  }
+  els.taskOverview.appendChild(wrapper);
+}
+
+function renderQualityWarnings(warnings, emptyText = '?????????') {
+  els.qualityWarnings.innerHTML = '';
+  if (!warnings.length) {
+    const item = document.createElement('div');
+    item.className = 'warning-item empty';
+    item.textContent = emptyText;
+    els.qualityWarnings.appendChild(item);
+    return;
+  }
+  const wrapper = document.createElement('div');
+  wrapper.className = 'warning-stack';
+  for (const warning of warnings) {
+    const item = document.createElement('div');
+    item.className = 'warning-item';
+    item.textContent = warning;
+    wrapper.appendChild(item);
+  }
+  els.qualityWarnings.appendChild(wrapper);
 }
 
 function renderRecentTasks(items) {
@@ -402,13 +527,15 @@ async function loadRecentTaskIntoEditor(taskId, domain) {
   });
   const taskPayload = payload.result.task_payload;
   if (!taskPayload) {
-    throw new Error('该历史任务未保存完整任务内容，无法回填。');
+    throw new Error('????????????????????');
   }
   setTaskEditor(taskPayload);
   hydrateFormFromTask(taskPayload);
+  renderTaskOverview(taskPayload, payload.result, '??????');
+  renderQualityWarnings(payload.result?.quality_report?.warnings || [], '??????????');
   switchTab('json');
-  setStatus('success', '任务已回填');
-  els.resultNarrative.textContent = `任务 ${taskId} 已回填到编辑器，你可以直接校验、调整或重新运行。`;
+  setStatus('success', '?????');
+  els.resultNarrative.textContent = `?? ${taskId} ????????????????????????`;
   els.resultJson.textContent = stringifyJson(payload.result);
 }
 
@@ -556,7 +683,11 @@ function summarizeResult(kind, result) {
 
 function renderResult(kind, result) {
   const summary = summarizeResult(kind, result);
+  const task = resolveTaskPayload(result);
+  const warnings = result.quality_report?.warnings || [];
   els.resultNarrative.textContent = summary.text;
+  renderTaskOverview(task, result);
+  renderQualityWarnings(warnings);
   renderSummaryCards(summary.cards);
   renderDomainSummary(result.quality_report?.domain_summary || result.domain_summary || null);
   const selectedSources = result.selected_source_details || result.selected_sources || [];
@@ -570,20 +701,22 @@ function renderResult(kind, result) {
 }
 
 async function handleBuildFromForm() {
-  setStatus('idle', '正在生成草稿');
+  setStatus('idle', '??????');
   const payload = await fetchJson('/api/draft/form', {
     method: 'POST',
     body: JSON.stringify(currentFormPayload()),
   });
   setTaskEditor(payload.task);
-  setStatus('success', '草稿已生成');
-  els.resultNarrative.textContent = '已根据表单生成任务草稿。你可以直接校验或运行，也可以先调整 JSON。';
+  setStatus('success', '?????');
+  renderTaskOverview(payload.task, { selected_sources: [] }, '????????');
+  renderQualityWarnings([], '????????????');
+  els.resultNarrative.textContent = '??????????????????????????????????';
 }
 
 async function handleImportDocument() {
   const file = els.documentInput.files?.[0];
   if (!file) {
-    throw new Error('请先选择本地文档。');
+    throw new Error('?????????');
   }
   const content = await file.text();
   const payload = await fetchJson('/api/draft/document', {
@@ -594,9 +727,11 @@ async function handleImportDocument() {
   els.documentPreview.textContent = payload.document.preview || '';
   setTaskEditor(payload.task_payload);
   hydrateFormFromTask(payload.task_payload);
-  setStatus('success', `已导入（${formatImportMode(payload.mode)}）`);
-  const warnings = payload.warnings?.length ? ` 注意：${payload.warnings.join(' ')}` : '';
-  els.resultNarrative.textContent = `文档已安全解析为任务草稿。${warnings}`;
+  setStatus('success', `????${formatImportMode(payload.mode)}?`);
+  renderTaskOverview(payload.task_payload, { selected_sources: [] }, '????????');
+  renderQualityWarnings(payload.warnings || [], '???????????');
+  const warnings = payload.warnings?.length ? ` ???${payload.warnings.join(' ')}` : '';
+  els.resultNarrative.textContent = `?????????????${warnings}`;
   els.resultJson.textContent = stringifyJson(payload);
 }
 
@@ -630,7 +765,7 @@ function downloadCurrentTaskJson() {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
-  setStatus('success', '任务 JSON 已下载');
+  setStatus('success', '???????');
 }
 
 async function handleReport() {
@@ -670,13 +805,15 @@ async function loadMeta() {
 async function loadExample() {
   const name = els.exampleSelect.value;
   if (!name) {
-    throw new Error('请先选择示例任务。');
+    throw new Error('?????????');
   }
   const payload = await fetchJson(`/api/example?name=${encodeURIComponent(name)}`);
   setTaskEditor(payload.task);
   hydrateFormFromTask(payload.task);
-  setStatus('success', '示例已载入');
-  els.resultNarrative.textContent = `示例任务 ${name} 已载入任务 JSON 编辑器。`;
+  setStatus('success', '?????');
+  renderTaskOverview(payload.task, { selected_sources: [] }, '????????');
+  renderQualityWarnings([], '?????????????');
+  els.resultNarrative.textContent = `???? ${name} ???????????`;
 }
 
 function switchTab(name) {
@@ -709,12 +846,14 @@ function wireEvents() {
 
 async function runAction(fn) {
   try {
-    setStatus('idle', '处理中');
+    setStatus('idle', '???');
     await fn();
   } catch (error) {
-    setStatus('error', '出错');
-    els.resultNarrative.textContent = error.message || '发生未知错误。';
+    setStatus('error', '??');
+    els.resultNarrative.textContent = error.message || '???????';
     els.resultJson.textContent = error.stack || String(error);
+    renderTaskOverview(null, null, '?????????????????????????');
+    renderQualityWarnings([], '??????????????????????');
     renderSummaryCards([]);
     renderListCard(els.selectedSources, []);
     renderListCard(els.artifactPaths, []);
