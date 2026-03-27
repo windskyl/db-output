@@ -1,0 +1,61 @@
+{
+  "task": {
+    "task_id": "job-python-org-rss-001",
+    "domain": "jobs",
+    "scenario_template": "job_hunt_engineering_basic",
+    "target_count": 1,
+    "topic_scope": [
+      "backend"
+    ],
+    "time_range": {
+      "start": "2026-02-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "timezone": "UTC"
+    },
+    "selection_mode": "explicit"
+  },
+  "selected_sources": [
+    {
+      "source_id": "python_org_jobs_rss",
+      "domain": "jobs",
+      "connector_kind": "rss_feed",
+      "source_channel": "rss",
+      "source_type": "public_jobs_rss",
+      "source_label": "Python.org Jobs RSS",
+      "base_url": "https://www.python.org",
+      "first_page_url": "https://www.python.org/jobs/feed/rss/",
+      "max_pages": 1,
+      "max_items_per_fetch": 50,
+      "rate_limit_qps": 1.0,
+      "rate_limit_burst": 1,
+      "max_concurrency": 1,
+      "timeout_seconds": null
+    }
+  ],
+  "artifacts": {
+    "raw_file": "data\\raw\\jobs\\job-python-org-rss-001\\source_local.jsonl.gz",
+    "normalized_file": "data\\normalized\\jobs\\job-python-org-rss-001\\normalized.jsonl.gz",
+    "sqlite_file": "data\\artifacts\\jobs\\job-python-org-rss-001\\result.sqlite",
+    "quality_report_file": "data\\artifacts\\jobs\\job-python-org-rss-001\\quality_report.json",
+    "run_report_file": "data\\artifacts\\jobs\\job-python-org-rss-001\\run_report.json",
+    "cache_dir": null
+  },
+  "status": "success",
+  "created_at": "2026-03-23T11:37:55.569608+00:00",
+  "quality_summary": {
+    "raw_count": 20,
+    "normalized_count": 20,
+    "deduped_count": 20,
+    "output_count": 20,
+    "warning_count": 0,
+    "fetch_request_count": 1,
+    "fetch_network_request_count": 1,
+    "fetch_cache_hit_count": 0,
+    "fetch_cache_miss_count": 0,
+    "fetch_retry_count": 0,
+    "fetch_failure_count": 0,
+    "source_stats": {
+      "python_org_jobs_rss": 20
+    }
+  }
+}

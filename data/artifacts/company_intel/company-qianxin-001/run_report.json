@@ -1,0 +1,97 @@
+{
+  "task": {
+    "task_id": "company-qianxin-001",
+    "domain": "company_intel",
+    "scenario_template": "company_due_diligence",
+    "target_count": 1,
+    "topic_scope": [
+      "company_profile",
+      "product_update",
+      "tech_blog"
+    ],
+    "time_range": {
+      "start": "2025-09-18T00:00:00",
+      "end": "2026-03-18T23:59:59",
+      "timezone": "Asia/Shanghai"
+    },
+    "selection_mode": "auto"
+  },
+  "selected_sources": [
+    {
+      "source_id": "qianxin_news",
+      "domain": "company_intel",
+      "connector_kind": "regex_html_list",
+      "source_channel": "html",
+      "source_type": "official_company_news",
+      "source_label": "Qianxin News",
+      "base_url": "https://www.qianxin.com",
+      "first_page_url": "https://www.qianxin.com/news/list",
+      "max_pages": 8,
+      "max_items_per_fetch": 100,
+      "rate_limit_qps": 1.0,
+      "rate_limit_burst": 1,
+      "max_concurrency": 1,
+      "timeout_seconds": null
+    },
+    {
+      "source_id": "qianxin_report",
+      "domain": "company_intel",
+      "connector_kind": "regex_html_list",
+      "source_channel": "html",
+      "source_type": "official_company_report",
+      "source_label": "Qianxin Reports",
+      "base_url": "https://www.qianxin.com",
+      "first_page_url": "https://www.qianxin.com/report/index",
+      "max_pages": 8,
+      "max_items_per_fetch": 100,
+      "rate_limit_qps": 1.0,
+      "rate_limit_burst": 1,
+      "max_concurrency": 1,
+      "timeout_seconds": null
+    },
+    {
+      "source_id": "qianxin_update",
+      "domain": "company_intel",
+      "connector_kind": "regex_html_list",
+      "source_channel": "html",
+      "source_type": "official_company_update",
+      "source_label": "Qianxin Product Updates",
+      "base_url": "https://www.qianxin.com",
+      "first_page_url": "https://www.qianxin.com/support/update",
+      "max_pages": 8,
+      "max_items_per_fetch": 100,
+      "rate_limit_qps": 1.0,
+      "rate_limit_burst": 1,
+      "max_concurrency": 1,
+      "timeout_seconds": null
+    }
+  ],
+  "artifacts": {
+    "raw_file": "data\\raw\\company_intel\\company-qianxin-001\\source_local.jsonl.gz",
+    "normalized_file": "data\\normalized\\company_intel\\company-qianxin-001\\normalized.jsonl.gz",
+    "sqlite_file": "data\\artifacts\\company_intel\\company-qianxin-001\\result.sqlite",
+    "quality_report_file": "data\\artifacts\\company_intel\\company-qianxin-001\\quality_report.json",
+    "run_report_file": "data\\artifacts\\company_intel\\company-qianxin-001\\run_report.json",
+    "cache_dir": null
+  },
+  "status": "success",
+  "created_at": "2026-03-24T06:07:03.193364+00:00",
+  "quality_summary": {
+    "raw_count": 52,
+    "normalized_count": 52,
+    "deduped_count": 52,
+    "output_count": 52,
+    "warning_count": 0,
+    "fetch_request_count": 6,
+    "fetch_network_request_count": 6,
+    "fetch_cache_hit_count": 0,
+    "fetch_cache_miss_count": 0,
+    "fetch_retry_count": 0,
+    "fetch_failure_count": 0,
+    "source_stats": {
+      "qianxin_news": 20,
+      "qianxin_report": 13,
+      "qianxin_update": 19
+    }
+  }
+}

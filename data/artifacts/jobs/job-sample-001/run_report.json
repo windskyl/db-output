@@ -1,0 +1,24 @@
+{
+  "task": {
+    "task_id": "job-sample-001",
+    "domain": "jobs",
+    "scenario_template": "job_hunt_engineering_basic",
+    "target_count": 1,
+    "topic_scope": [
+      "backend"
+    ],
+    "time_range": {
+      "start": "2026-02-01T00:00:00",
+      "end": "2026-03-18T00:00:00",
+      "timezone": "Asia/Shanghai"
+    }
+  },
+  "artifacts": {
+    "raw_file": "D:\\wsq\\projects\\db-output\\data\\raw\\jobs\\job-sample-001\\source_local.jsonl.gz",
+    "normalized_file": "D:\\wsq\\projects\\db-output\\data\\normalized\\jobs\\job-sample-001\\normalized.jsonl.gz",
+    "sqlite_file": "D:\\wsq\\projects\\db-output\\data\\artifacts\\jobs\\job-sample-001\\result.sqlite",
+    "quality_report_file": "D:\\wsq\\projects\\db-output\\data\\artifacts\\jobs\\job-sample-001\\quality_report.json",
+    "run_report_file": "D:\\wsq\\projects\\db-output\\data\\artifacts\\jobs\\job-sample-001\\run_report.json"
+  },
+  "status": "success"
+}

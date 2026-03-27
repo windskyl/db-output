@@ -1,0 +1,41 @@
+{
+  "task_id": "finance-ibm-daily-quotes-001",
+  "domain": "finance",
+  "raw_count": 10,
+  "normalized_count": 10,
+  "deduped_count": 10,
+  "output_count": 10,
+  "dropped_by_relevance": 0,
+  "dropped_by_quality": 0,
+  "missing_field_stats": {},
+  "source_stats": {
+    "alpha_vantage_demo_daily_quotes": 10
+  },
+  "fetch_stats": {
+    "task_id": "finance-ibm-daily-quotes-001",
+    "total_requests": 1,
+    "successful_requests": 1,
+    "failed_requests": 0,
+    "total_retries": 0,
+    "total_wait_ms": 0,
+    "status_codes": {
+      "200": 1
+    },
+    "error_types": {},
+    "source_stats": {
+      "alpha_vantage_demo_daily_quotes": {
+        "requests": 1,
+        "successful_requests": 1,
+        "failed_requests": 0,
+        "retries": 0,
+        "wait_ms": 0,
+        "status_codes": {
+          "200": 1
+        }
+      }
+    },
+    "recent_errors": []
+  },
+  "error_stats": {},
+  "warnings": []
+}

@@ -1,0 +1,74 @@
+{
+  "task_id": "company-qianxin-001",
+  "domain": "company_intel",
+  "raw_count": 52,
+  "normalized_count": 52,
+  "deduped_count": 52,
+  "output_count": 52,
+  "dropped_by_relevance": 0,
+  "dropped_by_quality": 0,
+  "missing_field_stats": {},
+  "source_stats": {
+    "qianxin_news": 20,
+    "qianxin_report": 13,
+    "qianxin_update": 19
+  },
+  "fetch_stats": {
+    "task_id": "company-qianxin-001",
+    "total_requests": 6,
+    "network_requests": 6,
+    "successful_requests": 6,
+    "failed_requests": 0,
+    "total_retries": 0,
+    "total_wait_ms": 237,
+    "cache_enabled": false,
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "cache_writes": 0,
+    "status_codes": {
+      "200": 6
+    },
+    "error_types": {},
+    "source_stats": {
+      "qianxin_news": {
+        "requests": 2,
+        "network_requests": 2,
+        "cache_hits": 0,
+        "successful_requests": 2,
+        "failed_requests": 0,
+        "retries": 0,
+        "wait_ms": 0,
+        "status_codes": {
+          "200": 2
+        }
+      },
+      "qianxin_report": {
+        "requests": 2,
+        "network_requests": 2,
+        "cache_hits": 0,
+        "successful_requests": 2,
+        "failed_requests": 0,
+        "retries": 0,
+        "wait_ms": 231,
+        "status_codes": {
+          "200": 2
+        }
+      },
+      "qianxin_update": {
+        "requests": 2,
+        "network_requests": 2,
+        "cache_hits": 0,
+        "successful_requests": 2,
+        "failed_requests": 0,
+        "retries": 0,
+        "wait_ms": 6,
+        "status_codes": {
+          "200": 2
+        }
+      }
+    },
+    "recent_errors": []
+  },
+  "error_stats": {},
+  "warnings": []
+}

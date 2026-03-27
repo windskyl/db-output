@@ -1,0 +1,72 @@
+{
+  "task_id": "public-sentiment-openai-tech-001",
+  "domain": "public_sentiment",
+  "raw_count": 4,
+  "normalized_count": 4,
+  "deduped_count": 4,
+  "output_count": 4,
+  "dropped_by_relevance": 0,
+  "dropped_by_quality": 0,
+  "missing_field_stats": {},
+  "source_stats": {
+    "hn_algolia_company_story_search": 4
+  },
+  "fetch_stats": {
+    "task_id": "public-sentiment-openai-tech-001",
+    "total_requests": 1,
+    "network_requests": 1,
+    "successful_requests": 1,
+    "failed_requests": 0,
+    "total_retries": 0,
+    "total_wait_ms": 0,
+    "cache_enabled": false,
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "cache_writes": 0,
+    "status_codes": {
+      "200": 1
+    },
+    "error_types": {},
+    "source_stats": {
+      "hn_algolia_company_story_search": {
+        "requests": 1,
+        "network_requests": 1,
+        "cache_hits": 0,
+        "successful_requests": 1,
+        "failed_requests": 0,
+        "retries": 0,
+        "wait_ms": 0,
+        "status_codes": {
+          "200": 1
+        }
+      }
+    },
+    "recent_errors": []
+  },
+  "error_stats": {},
+  "warnings": [],
+  "domain_summary": {
+    "topic_count": 1,
+    "topics": [
+      {
+        "topic_name": "tech_stack_engineering",
+        "post_count": 4,
+        "positive_count": 1,
+        "neutral_count": 3,
+        "negative_count": 0,
+        "average_sentiment_score": 0.25,
+        "dominant_sentiment_label": "neutral",
+        "most_positive_title": "EvidionAI – open-source multi-agent research system built on LangGraph",
+        "most_negative_title": null,
+        "most_neutral_title": "OpenAI just gave up on Sora and its billion-dollar Disney deal",
+        "positive_cue_counts": [
+          {
+            "cue": "fast",
+            "count": 1
+          }
+        ],
+        "negative_cue_counts": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "task": {
+    "task_id": "finance-ibm-daily-quotes-001",
+    "domain": "finance",
+    "scenario_template": "investment_market_quote_basic",
+    "target_count": 1,
+    "topic_scope": [
+      "market_quote"
+    ],
+    "time_range": {
+      "start": "2026-03-01T00:00:00",
+      "end": "2026-03-19T23:59:59",
+      "timezone": "UTC"
+    },
+    "selection_mode": "explicit"
+  },
+  "selected_sources": [
+    {
+      "source_id": "alpha_vantage_demo_daily_quotes",
+      "domain": "finance",
+      "connector_kind": "json_api",
+      "source_channel": "api",
+      "source_type": "public_finance_api",
+      "source_label": "Alpha Vantage Demo Daily Quotes",
+      "base_url": "https://www.alphavantage.co",
+      "first_page_url": "https://www.alphavantage.co/query",
+      "max_pages": 1,
+      "max_items_per_fetch": 10,
+      "rate_limit_qps": 0.5,
+      "rate_limit_burst": 1,
+      "max_concurrency": 1,
+      "timeout_seconds": 20
+    }
+  ],
+  "artifacts": {
+    "raw_file": "data\\raw\\finance\\finance-ibm-daily-quotes-001\\source_local.jsonl.gz",
+    "normalized_file": "data\\normalized\\finance\\finance-ibm-daily-quotes-001\\normalized.jsonl.gz",
+    "sqlite_file": "data\\artifacts\\finance\\finance-ibm-daily-quotes-001\\result.sqlite",
+    "quality_report_file": "data\\artifacts\\finance\\finance-ibm-daily-quotes-001\\quality_report.json",
+    "run_report_file": "data\\artifacts\\finance\\finance-ibm-daily-quotes-001\\run_report.json"
+  },
+  "status": "success",
+  "created_at": "2026-03-20T06:14:18.485953+00:00",
+  "quality_summary": {
+    "raw_count": 10,
+    "normalized_count": 10,
+    "output_count": 10,
+    "warning_count": 0,
+    "fetch_request_count": 1,
+    "fetch_retry_count": 0,
+    "fetch_failure_count": 0,
+    "source_stats": {
+      "alpha_vantage_demo_daily_quotes": 10
+    }
+  }
+}

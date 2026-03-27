@@ -1,0 +1,48 @@
+{
+  "task_id": "job-python-org-rss-001",
+  "domain": "jobs",
+  "raw_count": 20,
+  "normalized_count": 20,
+  "deduped_count": 20,
+  "output_count": 20,
+  "dropped_by_relevance": 0,
+  "dropped_by_quality": 0,
+  "missing_field_stats": {},
+  "source_stats": {
+    "python_org_jobs_rss": 20
+  },
+  "fetch_stats": {
+    "task_id": "job-python-org-rss-001",
+    "total_requests": 1,
+    "network_requests": 1,
+    "successful_requests": 1,
+    "failed_requests": 0,
+    "total_retries": 0,
+    "total_wait_ms": 0,
+    "cache_enabled": false,
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "cache_writes": 0,
+    "status_codes": {
+      "200": 1
+    },
+    "error_types": {},
+    "source_stats": {
+      "python_org_jobs_rss": {
+        "requests": 1,
+        "network_requests": 1,
+        "cache_hits": 0,
+        "successful_requests": 1,
+        "failed_requests": 0,
+        "retries": 0,
+        "wait_ms": 0,
+        "status_codes": {
+          "200": 1
+        }
+      }
+    },
+    "recent_errors": []
+  },
+  "error_stats": {},
+  "warnings": []
+}

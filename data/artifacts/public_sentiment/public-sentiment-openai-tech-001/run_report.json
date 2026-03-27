@@ -1,0 +1,85 @@
+{
+  "task": {
+    "task_id": "public-sentiment-openai-tech-001",
+    "domain": "public_sentiment",
+    "scenario_template": "company_sentiment_tracking_basic",
+    "target_count": 1,
+    "topic_scope": [
+      "tech_stack_engineering"
+    ],
+    "time_range": {
+      "start": "2025-09-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "timezone": "UTC"
+    },
+    "selection_mode": "explicit"
+  },
+  "selected_sources": [
+    {
+      "source_id": "hn_algolia_company_story_search",
+      "domain": "public_sentiment",
+      "connector_kind": "json_api",
+      "source_channel": "api",
+      "source_type": "public_forum_api",
+      "source_label": "Hacker News Algolia Company Story Search",
+      "base_url": "https://hn.algolia.com",
+      "first_page_url": "https://hn.algolia.com/api/v1/search_by_date",
+      "max_pages": 1,
+      "max_items_per_fetch": 50,
+      "rate_limit_qps": 1.0,
+      "rate_limit_burst": 1,
+      "max_concurrency": 1,
+      "timeout_seconds": null
+    }
+  ],
+  "artifacts": {
+    "raw_file": "data\\raw\\public_sentiment\\public-sentiment-openai-tech-001\\source_local.jsonl.gz",
+    "normalized_file": "data\\normalized\\public_sentiment\\public-sentiment-openai-tech-001\\normalized.jsonl.gz",
+    "sqlite_file": "data\\artifacts\\public_sentiment\\public-sentiment-openai-tech-001\\result.sqlite",
+    "quality_report_file": "data\\artifacts\\public_sentiment\\public-sentiment-openai-tech-001\\quality_report.json",
+    "run_report_file": "data\\artifacts\\public_sentiment\\public-sentiment-openai-tech-001\\run_report.json",
+    "cache_dir": null
+  },
+  "status": "success",
+  "created_at": "2026-03-25T02:53:38.766297+00:00",
+  "quality_summary": {
+    "raw_count": 4,
+    "normalized_count": 4,
+    "deduped_count": 4,
+    "output_count": 4,
+    "warning_count": 0,
+    "fetch_request_count": 1,
+    "fetch_network_request_count": 1,
+    "fetch_cache_hit_count": 0,
+    "fetch_cache_miss_count": 0,
+    "fetch_retry_count": 0,
+    "fetch_failure_count": 0,
+    "source_stats": {
+      "hn_algolia_company_story_search": 4
+    },
+    "domain_summary": {
+      "topic_count": 1,
+      "topics": [
+        {
+          "topic_name": "tech_stack_engineering",
+          "post_count": 4,
+          "positive_count": 1,
+          "neutral_count": 3,
+          "negative_count": 0,
+          "average_sentiment_score": 0.25,
+          "dominant_sentiment_label": "neutral",
+          "most_positive_title": "EvidionAI – open-source multi-agent research system built on LangGraph",
+          "most_negative_title": null,
+          "most_neutral_title": "OpenAI just gave up on Sora and its billion-dollar Disney deal",
+          "positive_cue_counts": [
+            {
+              "cue": "fast",
+              "count": 1
+            }
+          ],
+          "negative_cue_counts": []
+        }
+      ]
+    }
+  }
+}

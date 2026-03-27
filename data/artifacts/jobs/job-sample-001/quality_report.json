@@ -1,0 +1,18 @@
+{
+  "task_id": "job-sample-001",
+  "domain": "jobs",
+  "raw_count": 1,
+  "normalized_count": 1,
+  "deduped_count": 1,
+  "output_count": 1,
+  "dropped_by_relevance": 0,
+  "dropped_by_quality": 0,
+  "missing_field_stats": {},
+  "source_stats": {
+    "seed": 1
+  },
+  "error_stats": {},
+  "warnings": [
+    "This is a skeleton dry-run. Network collection connectors are not implemented yet."
+  ]
+}
