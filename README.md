@@ -1,37 +1,32 @@
 # db-output
 
-一个本地优先、规则驱动的数据采集项目，用于投资和求职场景下的数据收集、清洗与结果落库。
+A local-first, rule-driven data collection and structured output tool for finance, jobs, company intelligence, and scoped public sentiment workflows.
 
-## 当前范围
+## Current Scope
 
-当前仓库包含：
+The repository currently includes:
 
-- 需求文档
-- 实现方案文档
-- 可运行的 Python 项目骨架
-- 本地 CLI，用于任务校验与执行
-- 来源目录检查 CLI，用于查看已配置的数据源网站
-- 任务运行检查 CLI，用于查看本地产物与运行状态
-- `raw`、`normalized`、`artifacts` 三层存储
-- 便于校验的 SQLite 输出
-- 位于 `configs/sources/` 下的配置化来源定义
-- 通用 `HTML`、`RSS`、`JSON API` 连接器，而不是在核心代码里硬编码站点
-- 所有现有连接器共享的 target/topic 相关性匹配逻辑
+- Four first-level domains: `finance`, `jobs`, `company_intel`, `public_sentiment`
+- A local CLI for validation, execution, source preview, task listing, status inspection, and report loading
+- A local Web workspace for task drafting, document import, recent task reuse, and result preview
+- Three persistence layers: `raw`, `normalized`, `artifacts`
+- SQLite output designed for easy manual verification
+- Generic `HTML`, `RSS`, and `JSON API` connectors
+- Domain-specific helper tables such as skills, company projects, and sentiment topics
+- Local report artifacts such as `quality_report`, `run_report`, `domain_summary`, and `result_preview`
 
-## 架构说明
+## Architecture
 
-当前核心代码不再硬编码具体公司或网站。
+The core code does not hardcode specific companies or websites.
 
-- 任务 JSON 描述领域、目标、时间范围和来源策略
-- `src/app/sources/registry.py` 从 `configs/sources/<domain>/*.json` 载入来源定义
-- `src/app/services/task_service.py` 根据任务选择匹配的来源配置
-- `src/app/connectors/` 里的通用连接器执行对应来源
-- topic 限制由 `task.topic_scope` 和来源配置里的 `topic_terms` 共同驱动
-- 如果后续切换到同结构的新站点，原则上只需要新增来源配置，而不是重写核心连接器
+- Task JSON describes domain, targets, time range, and source policy
+- `src/app/sources/registry.py` loads source definitions from `configs/sources/<domain>/*.json`
+- `src/app/services/task_service.py` selects matching sources and builds task artifacts
+- Generic connectors under `src/app/connectors/` execute fetching and parsing
+- Topic filtering is driven by both `task.topic_scope` and per-source `topic_terms`
+- SQLite is the main external output, but the system still keeps `raw` and `normalized` as internal truth layers
 
-这意味着当前 `v0.1` 采用“手工维护来源目录 + 通用连接器执行”的方式。业务层决定选哪些源，连接器只负责执行。
-
-## 快速开始
+## Quick Start
 
 ```powershell
 python -m venv .venv
@@ -39,91 +34,184 @@ python -m venv .venv
 pip install -e .
 ```
 
-校验任务：
+The install creates two entry points:
+
+- `db-output`
+- `db-output-web`
+
+The default output root is `data/`.
+
+## CLI Usage
+
+Validate a task:
 
 ```powershell
 db-output validate tasks/examples/company_qianxin_recent_half_year.json
 ```
 
-查看已配置来源：
+List configured sources:
 
 ```powershell
 db-output sources --domain jobs
 ```
 
-预览某个任务会选中哪些来源：
+Preview which sources a task will select:
 
 ```powershell
 db-output sources --task-file tasks/examples/jobs_python_org_rss_recent.json
 ```
 
-运行 company_intel 任务：
+Run example tasks:
 
 ```powershell
 db-output run tasks/examples/company_qianxin_recent_half_year.json
-```
-
-运行 jobs HTML 任务：
-
-```powershell
 db-output run tasks/examples/jobs_python_org_recent.json
-```
-
-运行 jobs RSS 任务：
-
-```powershell
 db-output run tasks/examples/jobs_python_org_rss_recent.json
-```
-
-运行 public_sentiment API 任务：
-
-```powershell
 db-output run tasks/examples/public_sentiment_openai_tech_recent.json
-```
-
-运行 finance 财报任务：
-
-```powershell
 db-output run tasks/examples/finance_ibm_earnings_recent.json
-```
-
-运行 finance 日线行情任务：
-
-```powershell
 db-output run tasks/examples/finance_ibm_daily_quotes_recent.json
-```
-
-运行 finance 监管公告 RSS 任务：
-
-```powershell
 db-output run tasks/examples/finance_sec_press_recent.json
 ```
 
-查看本地已完成任务：
+List completed task runs:
 
 ```powershell
 db-output tasks --domain jobs
+db-output tasks --limit 10
 ```
 
-查看某个任务的状态、计数和产物路径：
+Inspect task status and artifact paths:
 
 ```powershell
 db-output status job-python-org-rss-001
 ```
 
-查看某个任务保存下来的运行报告和质量报告：
+Load stored run and quality reports:
 
 ```powershell
 db-output report job-python-org-rss-001 --kind all
 ```
 
-`db-output logs <task_id>` 是 `report` 的别名。
+`db-output logs <task_id>` is an alias of `report`.
 
-测试链路产生的临时结果说明文件只保留在本地，不纳入版本控制。
+## Web Workspace
 
-默认输出目录是 `data/`。
+Start the local Web UI:
+
+```powershell
+db-output-web --base-dir data
+```
+
+Or run the module directly:
+
+```powershell
+$env:PYTHONPATH='src'
+python -m app.interfaces.web.server --base-dir data
+```
+
+Default address: `http://127.0.0.1:8765`
+
+The current Web UI supports:
+
+- Drafting tasks from a form
+- Importing `.json`, `.md`, and `.txt` files
+- Validating and running tasks
+- Loading historical task reports
+- Rendering `result_preview` and `domain_summary`
+- Reusing recently completed task payloads
+
+## Output Layout
+
+Each task usually writes the following files:
+
+- `data/raw/<domain>/<task_id>/source_local.jsonl.gz`
+- `data/normalized/<domain>/<task_id>/normalized.jsonl.gz`
+- `data/artifacts/<domain>/<task_id>/result.sqlite`
+- `data/artifacts/<domain>/<task_id>/quality_report.json`
+- `data/artifacts/<domain>/<task_id>/run_report.json`
+
+Layer purpose:
+
+- `raw`: connector-level source records
+- `normalized`: cleaned, unified candidate records
+- `artifacts`: SQLite, reports, and logs
+
+## SQLite Output Model
+
+### jobs
+
+- `core_jobs_postings`: main postings table
+- `core_jobs_skills`: helper table for extracted technologies and engineering keywords
+
+### company_intel
+
+- `core_company_events`: main event table
+- `core_company_profiles`: helper table for company profile aggregation
+- `core_company_projects`: helper table for products, platforms, and projects
+
+### finance
+
+- `core_finance_events`: main finance event table
+- `core_finance_metrics`: helper table for extracted metrics
+- `core_finance_instruments`: helper table for tracked symbols / instruments
+
+### public_sentiment
+
+- `core_sentiment_posts`: main post table
+- `core_sentiment_topics`: topic aggregation table with sentiment counts, representative samples, cue counts, and share / balance fields
+
+## Reports and Preview Payloads
+
+`db-output status` and `db-output report` now expose richer payloads than the early skeleton version.
+
+Important fields include:
+
+- `task_payload`: a reusable task JSON snapshot
+- `selected_sources`: source summaries used by the task
+- `quality_report`: counts, warnings, fetch stats, and domain summary
+- `result_preview`: lightweight tabular preview for CLI / Web display
+- `domain_summary`: cards, sections, and narrative text for each domain
+
+`result_preview` uses a common structure:
+
+- `kind`
+- `tables[]`
+- `tables[].title`
+- `tables[].description`
+- `tables[].columns`
+- `tables[].rows`
+
+Current preview focus by domain:
+
+- `jobs`: latest postings and top skills
+- `company_intel`: event samples and top projects
+- `finance`: latest metrics and tracked instruments
+- `public_sentiment`: post samples and topic observations
+
+See `result_report_guide.md` for the current report and output details.
+
+## Example Tasks
+
+Task examples are stored under `tasks/examples/`.
+
+Typical examples include:
+
+- `jobs_python_org_recent.json`
+- `jobs_python_org_rss_recent.json`
+- `company_qianxin_recent_half_year.json`
+- `public_sentiment_openai_tech_recent.json`
+- `finance_ibm_earnings_recent.json`
+- `finance_ibm_daily_quotes_recent.json`
+- `finance_sec_press_recent.json`
+
 ## Quality Behavior
 
-- quality_policy.dedupe_mode=strict will deduplicate normalized records by dedupe_key before writing output.
-- quality_policy.required_fields and quality_policy.max_missing_ratio will drop records that exceed the allowed missing-field ratio.
-- normalized.jsonl.gz keeps normalized candidates for inspection, while SQLite only stores the post-quality output rows.
+- `quality_policy.dedupe_mode=strict` deduplicates by `dedupe_key` before SQLite write
+- `quality_policy.required_fields` and `quality_policy.max_missing_ratio` filter low-quality records before final output
+- `normalized.jsonl.gz` keeps normalized candidates, while SQLite stores only post-quality rows
+- `quality_report.warnings` records fallback, retries, dedupe removals, quality drops, and output truncation
+
+## Related Notes
+
+- `result_report_guide.md`: report payload and output-table guide
+- `finance_chain_test_result.md`: finance daily quote chain verification note

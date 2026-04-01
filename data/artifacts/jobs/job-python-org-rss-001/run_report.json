@@ -14,6 +14,67 @@
     },
     "selection_mode": "explicit"
   },
+  "task_payload": {
+    "task_id": "job-python-org-rss-001",
+    "scenario_template": "job_hunt_engineering_basic",
+    "domain": "jobs",
+    "targets": [
+      {
+        "type": "keyword",
+        "value": "Python"
+      }
+    ],
+    "topic_scope": [
+      "backend"
+    ],
+    "time_range": {
+      "start": "2026-02-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "timezone": "UTC"
+    },
+    "geo_scope": null,
+    "source_policy": {
+      "whitelist": [
+        "python_org_jobs_rss"
+      ],
+      "blacklist": [],
+      "selection_mode": "explicit",
+      "prefer_official": false,
+      "allow_rss": true,
+      "allow_api": false,
+      "allow_html": false,
+      "max_sources": 3
+    },
+    "relevance_policy": {
+      "require_target_match": true,
+      "require_topic_match": false,
+      "require_cooccurrence": false,
+      "min_relevance_score": 0.6
+    },
+    "quality_policy": {
+      "required_fields": [
+        "title",
+        "source_url",
+        "published_at"
+      ],
+      "dedupe_mode": "strict",
+      "max_missing_ratio": 0.2
+    },
+    "output_policy": {
+      "writer": "sqlite",
+      "keep_raw": true,
+      "keep_normalized": true,
+      "max_output_records": 1000,
+      "update_mode": "replace"
+    },
+    "run_policy": {
+      "max_concurrency": 4,
+      "timeout_seconds": 20,
+      "retry_times": 2,
+      "enable_cache": false,
+      "allow_browser": false
+    }
+  },
   "selected_sources": [
     {
       "source_id": "python_org_jobs_rss",
@@ -41,7 +102,7 @@
     "cache_dir": null
   },
   "status": "success",
-  "created_at": "2026-03-23T11:37:55.569608+00:00",
+  "created_at": "2026-03-31T12:30:04.104020+00:00",
   "quality_summary": {
     "raw_count": 20,
     "normalized_count": 20,
@@ -56,6 +117,72 @@
     "fetch_failure_count": 0,
     "source_stats": {
       "python_org_jobs_rss": 20
+    },
+    "domain_summary": {
+      "kind": "jobs",
+      "cards": [
+        {
+          "label": "岗位数",
+          "value": 20
+        },
+        {
+          "label": "公司数",
+          "value": 1
+        },
+        {
+          "label": "技能条目",
+          "value": 132
+        }
+      ],
+      "sections": [
+        {
+          "title": "高频公司",
+          "items": [
+            {
+              "label": "Python",
+              "value": 20
+            }
+          ]
+        },
+        {
+          "title": "高频技能",
+          "items": [
+            {
+              "label": "Python",
+              "value": 20
+            },
+            {
+              "label": "AWS",
+              "value": 8
+            },
+            {
+              "label": "Backend",
+              "value": 8
+            },
+            {
+              "label": "Scalability",
+              "value": 8
+            },
+            {
+              "label": "Cloud",
+              "value": 6
+            },
+            {
+              "label": "Docker",
+              "value": 6
+            },
+            {
+              "label": "FastAPI",
+              "value": 6
+            },
+            {
+              "label": "Kubernetes",
+              "value": 6
+            }
+          ]
+        }
+      ],
+      "narrative": "共汇总 20 条岗位信息，涉及 1 家公司，并提取 132 条技能记录。"
     }
   }
 }

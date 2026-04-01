@@ -1,23 +1,28 @@
 {
   "task_id": "finance-ibm-daily-quotes-001",
   "domain": "finance",
-  "raw_count": 10,
-  "normalized_count": 10,
-  "deduped_count": 10,
-  "output_count": 10,
+  "raw_count": 3,
+  "normalized_count": 3,
+  "deduped_count": 3,
+  "output_count": 3,
   "dropped_by_relevance": 0,
   "dropped_by_quality": 0,
   "missing_field_stats": {},
   "source_stats": {
-    "alpha_vantage_demo_daily_quotes": 10
+    "alpha_vantage_demo_daily_quotes": 3
   },
   "fetch_stats": {
     "task_id": "finance-ibm-daily-quotes-001",
     "total_requests": 1,
+    "network_requests": 1,
     "successful_requests": 1,
     "failed_requests": 0,
     "total_retries": 0,
     "total_wait_ms": 0,
+    "cache_enabled": false,
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "cache_writes": 0,
     "status_codes": {
       "200": 1
     },
@@ -25,6 +30,8 @@
     "source_stats": {
       "alpha_vantage_demo_daily_quotes": {
         "requests": 1,
+        "network_requests": 1,
+        "cache_hits": 0,
         "successful_requests": 1,
         "failed_requests": 0,
         "retries": 0,
@@ -37,5 +44,115 @@
     "recent_errors": []
   },
   "error_stats": {},
-  "warnings": []
+  "warnings": [],
+  "domain_summary": {
+    "kind": "finance",
+    "cards": [
+      {
+        "label": "事件数",
+        "value": 3
+      },
+      {
+        "label": "标的数",
+        "value": 1
+      },
+      {
+        "label": "指标条数",
+        "value": 3
+      }
+    ],
+    "sections": [
+      {
+        "title": "跟踪标的",
+        "items": [
+          {
+            "label": "IBM",
+            "value": "IBM"
+          }
+        ]
+      },
+      {
+        "title": "高频指标",
+        "items": [
+          {
+            "label": "close",
+            "value": 3
+          }
+        ]
+      }
+    ],
+    "narrative": "共汇总 3 条金融事件，覆盖 1 个标的，并提取 3 条指标记录。"
+  },
+  "result_preview": {
+    "kind": "finance",
+    "tables": [
+      {
+        "title": "最新指标",
+        "description": "用于快速查看结果库中的标的指标值。",
+        "columns": [
+          {
+            "key": "symbol",
+            "label": "标的"
+          },
+          {
+            "key": "metric_name",
+            "label": "指标"
+          },
+          {
+            "key": "metric_value",
+            "label": "数值"
+          },
+          {
+            "key": "published_at",
+            "label": "日期"
+          }
+        ],
+        "rows": [
+          {
+            "symbol": "IBM",
+            "metric_name": "close",
+            "metric_value": "250.3700",
+            "published_at": "2026-03-19"
+          },
+          {
+            "symbol": "IBM",
+            "metric_name": "close",
+            "metric_value": "251.6000",
+            "published_at": "2026-03-18"
+          },
+          {
+            "symbol": "IBM",
+            "metric_name": "close",
+            "metric_value": "256.1100",
+            "published_at": "2026-03-17"
+          }
+        ]
+      },
+      {
+        "title": "跟踪标的",
+        "description": "用于快速确认本次任务涉及的标的范围。",
+        "columns": [
+          {
+            "key": "symbol",
+            "label": "代码"
+          },
+          {
+            "key": "instrument_name",
+            "label": "名称"
+          },
+          {
+            "key": "last_seen_at",
+            "label": "最后出现"
+          }
+        ],
+        "rows": [
+          {
+            "symbol": "IBM",
+            "instrument_name": "IBM",
+            "last_seen_at": "2026-03-17"
+          }
+        ]
+      }
+    ]
+  }
 }

@@ -44,5 +44,178 @@
     "recent_errors": []
   },
   "error_stats": {},
-  "warnings": []
+  "warnings": [],
+  "domain_summary": {
+    "kind": "jobs",
+    "cards": [
+      {
+        "label": "岗位数",
+        "value": 20
+      },
+      {
+        "label": "公司数",
+        "value": 1
+      },
+      {
+        "label": "技能条目",
+        "value": 132
+      }
+    ],
+    "sections": [
+      {
+        "title": "高频公司",
+        "items": [
+          {
+            "label": "Python",
+            "value": 20
+          }
+        ]
+      },
+      {
+        "title": "高频技能",
+        "items": [
+          {
+            "label": "Python",
+            "value": 20
+          },
+          {
+            "label": "AWS",
+            "value": 8
+          },
+          {
+            "label": "Backend",
+            "value": 8
+          },
+          {
+            "label": "Scalability",
+            "value": 8
+          },
+          {
+            "label": "Cloud",
+            "value": 6
+          },
+          {
+            "label": "Docker",
+            "value": 6
+          },
+          {
+            "label": "FastAPI",
+            "value": 6
+          },
+          {
+            "label": "Kubernetes",
+            "value": 6
+          }
+        ]
+      }
+    ],
+    "narrative": "共汇总 20 条岗位信息，涉及 1 家公司，并提取 132 条技能记录。"
+  },
+  "result_preview": {
+    "kind": "jobs",
+    "tables": [
+      {
+        "title": "最新岗位样本",
+        "description": "用于快速核对职位标题、公司和发布时间是否符合预期。",
+        "columns": [
+          {
+            "key": "company",
+            "label": "公司"
+          },
+          {
+            "key": "title",
+            "label": "职位标题"
+          },
+          {
+            "key": "published_at",
+            "label": "发布时间"
+          },
+          {
+            "key": "location",
+            "label": "地点"
+          }
+        ],
+        "rows": [
+          {
+            "company": "Python",
+            "title": "DevOps Engineer-FULLY REMOTE-US, CANADA, EUROPE based only, ActivePrime, Inc.",
+            "published_at": "2026-03-31",
+            "location": "REMOTE, REMOTE"
+          },
+          {
+            "company": "Python",
+            "title": "Senior Python Developer/DevOps Engineer, Six Feet Up",
+            "published_at": "2026-03-31",
+            "location": "Remote, (USA only)"
+          },
+          {
+            "company": "Python",
+            "title": "Python Tech Lead, TramCase",
+            "published_at": "2026-03-31",
+            "location": "Remote, Remote"
+          },
+          {
+            "company": "Python",
+            "title": "Infrastructure Engineer, Python Software Foundation",
+            "published_at": "2026-03-31",
+            "location": "Remote, USA"
+          },
+          {
+            "company": "Python",
+            "title": "Senior Python Engineer (backend focused), World Parts Direct",
+            "published_at": "2026-03-31",
+            "location": "Garland, TX, United States"
+          }
+        ]
+      },
+      {
+        "title": "热门技能",
+        "description": "用于快速看出当前任务中频率最高的技能要求。",
+        "columns": [
+          {
+            "key": "skill_name",
+            "label": "技能"
+          },
+          {
+            "key": "count",
+            "label": "出现次数"
+          }
+        ],
+        "rows": [
+          {
+            "skill_name": "Python",
+            "count": 20
+          },
+          {
+            "skill_name": "AWS",
+            "count": 8
+          },
+          {
+            "skill_name": "Backend",
+            "count": 8
+          },
+          {
+            "skill_name": "Scalability",
+            "count": 8
+          },
+          {
+            "skill_name": "Cloud",
+            "count": 6
+          },
+          {
+            "skill_name": "Docker",
+            "count": 6
+          },
+          {
+            "skill_name": "FastAPI",
+            "count": 6
+          },
+          {
+            "skill_name": "Kubernetes",
+            "count": 6
+          }
+        ]
+      }
+    ]
+  }
 }

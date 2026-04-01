@@ -14,6 +14,67 @@
     },
     "selection_mode": "explicit"
   },
+  "task_payload": {
+    "task_id": "public-sentiment-openai-tech-001",
+    "scenario_template": "company_sentiment_tracking_basic",
+    "domain": "public_sentiment",
+    "targets": [
+      {
+        "type": "company",
+        "value": "OpenAI"
+      }
+    ],
+    "topic_scope": [
+      "tech_stack_engineering"
+    ],
+    "time_range": {
+      "start": "2025-09-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "timezone": "UTC"
+    },
+    "geo_scope": null,
+    "source_policy": {
+      "whitelist": [
+        "hn_algolia_company_story_search"
+      ],
+      "blacklist": [],
+      "selection_mode": "explicit",
+      "prefer_official": false,
+      "allow_rss": false,
+      "allow_api": true,
+      "allow_html": false,
+      "max_sources": 3
+    },
+    "relevance_policy": {
+      "require_target_match": true,
+      "require_topic_match": true,
+      "require_cooccurrence": false,
+      "min_relevance_score": 0.6
+    },
+    "quality_policy": {
+      "required_fields": [
+        "title",
+        "source_url",
+        "published_at"
+      ],
+      "dedupe_mode": "strict",
+      "max_missing_ratio": 0.2
+    },
+    "output_policy": {
+      "writer": "sqlite",
+      "keep_raw": true,
+      "keep_normalized": true,
+      "max_output_records": 1000,
+      "update_mode": "replace"
+    },
+    "run_policy": {
+      "max_concurrency": 4,
+      "timeout_seconds": 20,
+      "retry_times": 2,
+      "enable_cache": false,
+      "allow_browser": false
+    }
+  },
   "selected_sources": [
     {
       "source_id": "hn_algolia_company_story_search",
@@ -41,12 +102,12 @@
     "cache_dir": null
   },
   "status": "success",
-  "created_at": "2026-03-25T02:53:38.766297+00:00",
+  "created_at": "2026-03-31T12:30:05.427153+00:00",
   "quality_summary": {
-    "raw_count": 4,
-    "normalized_count": 4,
-    "deduped_count": 4,
-    "output_count": 4,
+    "raw_count": 8,
+    "normalized_count": 8,
+    "deduped_count": 8,
+    "output_count": 8,
     "warning_count": 0,
     "fetch_request_count": 1,
     "fetch_network_request_count": 1,
@@ -55,31 +116,51 @@
     "fetch_retry_count": 0,
     "fetch_failure_count": 0,
     "source_stats": {
-      "hn_algolia_company_story_search": 4
+      "hn_algolia_company_story_search": 8
     },
     "domain_summary": {
+      "kind": "public_sentiment",
       "topic_count": 1,
       "topics": [
         {
           "topic_name": "tech_stack_engineering",
-          "post_count": 4,
-          "positive_count": 1,
-          "neutral_count": 3,
+          "post_count": 8,
+          "positive_count": 2,
+          "neutral_count": 6,
           "negative_count": 0,
-          "average_sentiment_score": 0.25,
+          "average_sentiment_score": 0.1158,
           "dominant_sentiment_label": "neutral",
-          "most_positive_title": "EvidionAI – open-source multi-agent research system built on LangGraph",
+          "most_positive_title": "Show HN: I made a cheaper alternative to Claude Code or Codex CLI",
           "most_negative_title": null,
-          "most_neutral_title": "OpenAI just gave up on Sora and its billion-dollar Disney deal",
+          "most_neutral_title": "OpenAI rolls out ChatGPT Library to store your personal files",
           "positive_cue_counts": [
             {
-              "cue": "fast",
+              "cue": "better",
+              "count": 1
+            },
+            {
+              "cue": "good",
+              "count": 1
+            },
+            {
+              "cue": "powerful",
               "count": 1
             }
           ],
           "negative_cue_counts": []
         }
-      ]
+      ],
+      "cards": [
+        {
+          "label": "主题数",
+          "value": 1
+        },
+        {
+          "label": "帖子数",
+          "value": 8
+        }
+      ],
+      "narrative": "共采集 8 条舆情帖子，覆盖 1 个主题，下方摘要展示了各主题的情绪分布。"
     }
   }
 }

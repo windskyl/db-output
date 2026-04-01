@@ -105,6 +105,7 @@ class TaskService:
             "artifacts": item["artifacts"],
             "selected_sources": item["selected_sources"],
             "quality_report": item["quality_report"],
+            "result_preview": item["quality_report"].get("result_preview"),
         }
 
     def get_task_report(self, task_id: str, domain: str | None = None, kind: str = "all") -> dict:
@@ -119,6 +120,7 @@ class TaskService:
                 "run_report_file": item["artifacts"]["run_report_file"],
                 "quality_report_file": item["artifacts"]["quality_report_file"],
             },
+            "result_preview": item["quality_report"].get("result_preview"),
         }
         if kind in {"run", "all"}:
             report["run_report"] = item["run_report"]
@@ -187,6 +189,10 @@ class TaskService:
         if report_summary:
             quality_report["domain_summary"] = report_summary
             run_summary["quality_report"]["domain_summary"] = report_summary
+        result_preview = self._build_result_preview(task.domain, Path(artifacts.sqlite_file))
+        if result_preview:
+            quality_report["result_preview"] = result_preview
+            run_summary["quality_report"]["result_preview"] = result_preview
         paths.quality_report_file.write_text(json.dumps(quality_report, ensure_ascii=False, indent=2), encoding="utf-8")
         paths.run_report_file.write_text(
             json.dumps(
@@ -238,6 +244,7 @@ class TaskService:
                 "cache_dir": artifacts.cache_dir,
             },
             "quality_report": quality_report,
+            "result_preview": quality_report.get("result_preview"),
         }
 
     def _collect_raw_records(self, task: TaskSpec, selected_sources: Iterable[Any]) -> list[RawRecord]:
@@ -370,11 +377,370 @@ class TaskService:
             return getattr(record, field_name)
         return record.extra.get(field_name)
 
+
     def _build_source_stats(self, raw_records: list[RawRecord]) -> dict[str, int]:
         stats: dict[str, int] = {}
         for record in raw_records:
             stats[record.source_id] = stats.get(record.source_id, 0) + 1
         return stats
+
+    def _build_result_preview(self, domain: str, sqlite_path: Path) -> dict[str, Any] | None:
+        if not sqlite_path.exists():
+            return None
+        import sqlite3
+
+        connection = sqlite3.connect(sqlite_path)
+        try:
+            if domain == "jobs":
+                return self._build_jobs_result_preview(connection)
+            if domain == "company_intel":
+                return self._build_company_intel_result_preview(connection)
+            if domain == "finance":
+                return self._build_finance_result_preview(connection)
+            if domain == "public_sentiment":
+                return self._build_public_sentiment_result_preview(connection)
+            return None
+        finally:
+            connection.close()
+
+    def _build_jobs_result_preview(self, connection: Any) -> dict[str, Any] | None:
+        posting_rows = connection.execute(
+            """
+            SELECT primary_entity, title, published_at, extra_json
+            FROM core_jobs_postings
+            ORDER BY published_at DESC, record_id ASC
+            LIMIT 5
+            """
+        ).fetchall()
+        skill_rows = connection.execute(
+            """
+            SELECT skill_name, COUNT(*)
+            FROM core_jobs_skills
+            GROUP BY skill_name
+            ORDER BY COUNT(*) DESC, skill_name ASC
+            LIMIT 8
+            """
+        ).fetchall()
+        if not posting_rows and not skill_rows:
+            return None
+        postings = []
+        for company, title, published_at, extra_json in posting_rows:
+            extra = json.loads(str(extra_json)) if extra_json else {}
+            postings.append(
+                {
+                    "company": company,
+                    "title": title,
+                    "published_at": self._preview_date_text(published_at),
+                    "location": str(extra.get("location") or "未提供"),
+                }
+            )
+        skills = [{"skill_name": row[0], "count": int(row[1])} for row in skill_rows]
+        return {
+            "kind": "jobs",
+            "tables": [
+                self._preview_table(
+                    title="最新岗位样本",
+                    description="用于快速核对职位标题、公司和发布时间是否符合预期。",
+                    columns=[
+                        {"key": "company", "label": "公司"},
+                        {"key": "title", "label": "职位标题"},
+                        {"key": "published_at", "label": "发布时间"},
+                        {"key": "location", "label": "地点"},
+                    ],
+                    rows=postings,
+                ),
+                self._preview_table(
+                    title="热门技能",
+                    description="用于快速看出当前任务中频率最高的技能要求。",
+                    columns=[
+                        {"key": "skill_name", "label": "技能"},
+                        {"key": "count", "label": "出现次数"},
+                    ],
+                    rows=skills,
+                ),
+            ],
+        }
+
+    def _build_company_intel_result_preview(self, connection: Any) -> dict[str, Any] | None:
+        event_rows = connection.execute(
+            """
+            SELECT primary_entity, title, published_at, topic_tags_json
+            FROM core_company_events
+            ORDER BY published_at DESC, record_id ASC
+            LIMIT 5
+            """
+        ).fetchall()
+        project_rows = connection.execute(
+            """
+            SELECT project_name, mention_count, last_published_at
+            FROM core_company_projects
+            ORDER BY mention_count DESC, project_name ASC
+            LIMIT 8
+            """
+        ).fetchall()
+        if not event_rows and not project_rows:
+            return None
+        events = []
+        for company, title, published_at, topic_tags_json in event_rows:
+            topics = self._preview_topic_text("company_intel", self._json_list(topic_tags_json))
+            events.append(
+                {
+                    "company": company,
+                    "title": title,
+                    "published_at": self._preview_date_text(published_at),
+                    "topics": topics or "未提供",
+                }
+            )
+        projects = [
+            {
+                "project_name": row[0],
+                "mention_count": int(row[1]),
+                "last_published_at": self._preview_date_text(row[2]),
+            }
+            for row in project_rows
+        ]
+        return {
+            "kind": "company_intel",
+            "tables": [
+                self._preview_table(
+                    title="事件样本",
+                    description="用于快速确认抓取的公司动态标题与主题分类。",
+                    columns=[
+                        {"key": "company", "label": "公司"},
+                        {"key": "title", "label": "事件标题"},
+                        {"key": "published_at", "label": "发布时间"},
+                        {"key": "topics", "label": "主题"},
+                    ],
+                    rows=events,
+                ),
+                self._preview_table(
+                    title="高频项目",
+                    description="用于快速查看被多次提及的产品或项目名称。",
+                    columns=[
+                        {"key": "project_name", "label": "项目名称"},
+                        {"key": "mention_count", "label": "提及次数"},
+                        {"key": "last_published_at", "label": "最后出现"},
+                    ],
+                    rows=projects,
+                ),
+            ],
+        }
+
+    def _build_finance_result_preview(self, connection: Any) -> dict[str, Any] | None:
+        metric_rows = connection.execute(
+            """
+            SELECT primary_entity, metric_name, metric_value, published_at
+            FROM core_finance_metrics
+            ORDER BY published_at DESC, primary_entity ASC, metric_name ASC
+            LIMIT 8
+            """
+        ).fetchall()
+        instrument_rows = connection.execute(
+            """
+            SELECT symbol, instrument_name, last_seen_at
+            FROM core_finance_instruments
+            ORDER BY last_seen_at DESC, symbol ASC
+            LIMIT 5
+            """
+        ).fetchall()
+        if not metric_rows and not instrument_rows:
+            return None
+        metrics = [
+            {
+                "symbol": row[0],
+                "metric_name": row[1],
+                "metric_value": str(row[2]),
+                "published_at": self._preview_date_text(row[3]),
+            }
+            for row in metric_rows
+        ]
+        instruments = [
+            {
+                "symbol": row[0],
+                "instrument_name": row[1] or row[0],
+                "last_seen_at": self._preview_date_text(row[2]),
+            }
+            for row in instrument_rows
+        ]
+        return {
+            "kind": "finance",
+            "tables": [
+                self._preview_table(
+                    title="最新指标",
+                    description="用于快速查看结果库中的标的指标值。",
+                    columns=[
+                        {"key": "symbol", "label": "标的"},
+                        {"key": "metric_name", "label": "指标"},
+                        {"key": "metric_value", "label": "数值"},
+                        {"key": "published_at", "label": "日期"},
+                    ],
+                    rows=metrics,
+                ),
+                self._preview_table(
+                    title="跟踪标的",
+                    description="用于快速确认本次任务涉及的标的范围。",
+                    columns=[
+                        {"key": "symbol", "label": "代码"},
+                        {"key": "instrument_name", "label": "名称"},
+                        {"key": "last_seen_at", "label": "最后出现"},
+                    ],
+                    rows=instruments,
+                ),
+            ],
+        }
+
+    def _build_public_sentiment_result_preview(self, connection: Any) -> dict[str, Any] | None:
+        post_rows = connection.execute(
+            """
+            SELECT title, sentiment_label, sentiment_score, published_at,
+                   sentiment_positive_cues_json, sentiment_negative_cues_json
+            FROM core_sentiment_posts
+            ORDER BY published_at DESC, record_id ASC
+            LIMIT 5
+            """
+        ).fetchall()
+        topic_rows = connection.execute(
+            """
+            SELECT topic_name, post_count, dominant_sentiment_label, average_sentiment_score
+            FROM core_sentiment_topics
+            ORDER BY post_count DESC, topic_name ASC
+            LIMIT 5
+            """
+        ).fetchall()
+        if not post_rows and not topic_rows:
+            return None
+        posts = []
+        for title, sentiment_label, sentiment_score, published_at, positive_json, negative_json in post_rows:
+            cues = self._json_list(positive_json)[:2] + self._json_list(negative_json)[:2]
+            posts.append(
+                {
+                    "title": title,
+                    "sentiment_label": self._preview_sentiment_label(sentiment_label),
+                    "sentiment_score": self._preview_score_text(sentiment_score),
+                    "published_at": self._preview_date_text(published_at),
+                    "cues": "、".join(str(item) for item in cues) if cues else "未提供",
+                }
+            )
+        topics = [
+            {
+                "topic_name": self._preview_topic_label("public_sentiment", row[0]),
+                "post_count": int(row[1]),
+                "dominant_sentiment_label": self._preview_sentiment_label(row[2]),
+                "average_sentiment_score": self._preview_score_text(row[3]),
+            }
+            for row in topic_rows
+        ]
+        return {
+            "kind": "public_sentiment",
+            "tables": [
+                self._preview_table(
+                    title="帖子样本",
+                    description="用于快速查看情绪标签、得分和代表性线索。",
+                    columns=[
+                        {"key": "title", "label": "帖子标题"},
+                        {"key": "sentiment_label", "label": "情绪"},
+                        {"key": "sentiment_score", "label": "得分"},
+                        {"key": "published_at", "label": "日期"},
+                        {"key": "cues", "label": "代表线索"},
+                    ],
+                    rows=posts,
+                ),
+                self._preview_table(
+                    title="主题观察",
+                    description="用于快速对比不同主题的讨论量与主导情绪。",
+                    columns=[
+                        {"key": "topic_name", "label": "主题"},
+                        {"key": "post_count", "label": "帖子数"},
+                        {"key": "dominant_sentiment_label", "label": "主导情绪"},
+                        {"key": "average_sentiment_score", "label": "平均得分"},
+                    ],
+                    rows=topics,
+                ),
+            ],
+        }
+
+    def _preview_table(self, *, title: str, description: str, columns: list[dict[str, str]], rows: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "title": title,
+            "description": description,
+            "columns": columns,
+            "rows": rows,
+        }
+
+    def _preview_date_text(self, value: Any) -> str:
+        if value is None:
+            return "未提供"
+        text = str(value).strip()
+        if not text:
+            return "未提供"
+        return text[:10]
+
+    def _preview_score_text(self, value: Any) -> str:
+        try:
+            return f"{float(value):.4f}".rstrip("0").rstrip(".")
+        except Exception:
+            return str(value)
+
+    def _json_list(self, raw_value: Any) -> list[Any]:
+        if not raw_value:
+            return []
+        if isinstance(raw_value, list):
+            return raw_value
+        try:
+            parsed = json.loads(str(raw_value))
+        except Exception:
+            return []
+        return parsed if isinstance(parsed, list) else []
+
+    def _preview_topic_text(self, domain: str, topics: list[Any]) -> str:
+        labels = [self._preview_topic_label(domain, str(topic)) for topic in topics if str(topic).strip()]
+        return "、".join(labels)
+
+    def _preview_topic_label(self, domain: str, topic: str) -> str:
+        mapping = {
+            "jobs": {
+                "backend": "后端开发",
+                "frontend": "前端开发",
+                "algorithm": "算法题与算法岗",
+                "testing": "测试与质量保障",
+                "devops": "DevOps 与运维",
+                "data_engineering": "数据工程",
+                "client": "客户端开发",
+            },
+            "company_intel": {
+                "company_profile": "公司画像",
+                "product_update": "产品动态",
+                "tech_blog": "技术博客",
+                "open_source_activity": "开源动态",
+                "funding_event": "融资事件",
+                "career_page": "招聘页面",
+            },
+            "finance": {
+                "market_quote": "行情报价",
+                "company_announcement": "公司公告",
+                "financial_report": "财务报告",
+                "fund_holding": "基金持仓",
+                "investment_news": "投资新闻",
+            },
+            "public_sentiment": {
+                "interview_experience": "面试体验",
+                "salary_benefits": "薪酬福利",
+                "workload_overtime": "工作强度",
+                "management_culture": "管理与文化",
+                "tech_stack_engineering": "技术栈与工程",
+                "layoff_hiring_freeze": "裁员与冻结招聘",
+                "remote_office_policy": "远程与办公政策",
+            },
+        }
+        return mapping.get(domain, {}).get(topic, topic)
+
+    def _preview_sentiment_label(self, label: Any) -> str:
+        mapping = {
+            "positive": "正向",
+            "neutral": "中性",
+            "negative": "负向",
+        }
+        return mapping.get(str(label), str(label))
 
     def _build_domain_report_summary(self, domain: str, sqlite_path: Path) -> dict[str, Any] | None:
         if not sqlite_path.exists():
@@ -625,6 +991,12 @@ class TaskService:
         quality_report_path = Path(str(artifacts.get("quality_report_file", run_report_path.with_name("quality_report.json"))))
         artifacts.setdefault("quality_report_file", str(quality_report_path))
         quality_report = self._read_json_file(quality_report_path) if quality_report_path.exists() else {}
+        sqlite_file = str(artifacts.get("sqlite_file", "") or "")
+        domain_name = str(run_report.get("task", {}).get("domain", "") or "")
+        if sqlite_file and domain_name and "result_preview" not in quality_report:
+            preview = self._build_result_preview(domain_name, Path(sqlite_file))
+            if preview is not None:
+                quality_report["result_preview"] = preview
         run_report_stat = run_report_path.stat()
         quality_report_stat = quality_report_path.stat() if quality_report_path.exists() else run_report_stat
         created_at = str(run_report.get("created_at") or self._timestamp_to_iso(run_report_stat.st_mtime))

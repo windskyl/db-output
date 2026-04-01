@@ -1,15 +1,15 @@
 {
   "task_id": "public-sentiment-openai-tech-001",
   "domain": "public_sentiment",
-  "raw_count": 4,
-  "normalized_count": 4,
-  "deduped_count": 4,
-  "output_count": 4,
+  "raw_count": 8,
+  "normalized_count": 8,
+  "deduped_count": 8,
+  "output_count": 8,
   "dropped_by_relevance": 0,
   "dropped_by_quality": 0,
   "missing_field_stats": {},
   "source_stats": {
-    "hn_algolia_company_story_search": 4
+    "hn_algolia_company_story_search": 8
   },
   "fetch_stats": {
     "task_id": "public-sentiment-openai-tech-001",
@@ -46,26 +46,144 @@
   "error_stats": {},
   "warnings": [],
   "domain_summary": {
+    "kind": "public_sentiment",
     "topic_count": 1,
     "topics": [
       {
         "topic_name": "tech_stack_engineering",
-        "post_count": 4,
-        "positive_count": 1,
-        "neutral_count": 3,
+        "post_count": 8,
+        "positive_count": 2,
+        "neutral_count": 6,
         "negative_count": 0,
-        "average_sentiment_score": 0.25,
+        "average_sentiment_score": 0.1158,
         "dominant_sentiment_label": "neutral",
-        "most_positive_title": "EvidionAI – open-source multi-agent research system built on LangGraph",
+        "most_positive_title": "Show HN: I made a cheaper alternative to Claude Code or Codex CLI",
         "most_negative_title": null,
-        "most_neutral_title": "OpenAI just gave up on Sora and its billion-dollar Disney deal",
+        "most_neutral_title": "OpenAI rolls out ChatGPT Library to store your personal files",
         "positive_cue_counts": [
           {
-            "cue": "fast",
+            "cue": "better",
+            "count": 1
+          },
+          {
+            "cue": "good",
+            "count": 1
+          },
+          {
+            "cue": "powerful",
             "count": 1
           }
         ],
         "negative_cue_counts": []
+      }
+    ],
+    "cards": [
+      {
+        "label": "主题数",
+        "value": 1
+      },
+      {
+        "label": "帖子数",
+        "value": 8
+      }
+    ],
+    "narrative": "共采集 8 条舆情帖子，覆盖 1 个主题，下方摘要展示了各主题的情绪分布。"
+  },
+  "result_preview": {
+    "kind": "public_sentiment",
+    "tables": [
+      {
+        "title": "帖子样本",
+        "description": "用于快速查看情绪标签、得分和代表性线索。",
+        "columns": [
+          {
+            "key": "title",
+            "label": "帖子标题"
+          },
+          {
+            "key": "sentiment_label",
+            "label": "情绪"
+          },
+          {
+            "key": "sentiment_score",
+            "label": "得分"
+          },
+          {
+            "key": "published_at",
+            "label": "日期"
+          },
+          {
+            "key": "cues",
+            "label": "代表线索"
+          }
+        ],
+        "rows": [
+          {
+            "title": "Ask HN: What do you use for local embeddings?",
+            "sentiment_label": "正向",
+            "sentiment_score": "0.3095",
+            "published_at": "2026-03-31",
+            "cues": "powerful"
+          },
+          {
+            "title": "Show HN: HolyCode – OpenCode in Docker. Use your Claude subscription. 30 tools",
+            "sentiment_label": "中性",
+            "sentiment_score": "0",
+            "published_at": "2026-03-31",
+            "cues": "未提供"
+          },
+          {
+            "title": "OpenAI ChatGPT fixes DNS data smuggling flaw",
+            "sentiment_label": "中性",
+            "sentiment_score": "0",
+            "published_at": "2026-03-31",
+            "cues": "未提供"
+          },
+          {
+            "title": "Show HN: Claude/OpenAI/Gemini agents compete as investors with $100K each",
+            "sentiment_label": "中性",
+            "sentiment_score": "0",
+            "published_at": "2026-03-30",
+            "cues": "未提供"
+          },
+          {
+            "title": "Show HN: Botference – A TUI to Plan with Claude Code and Codex Simultaneously",
+            "sentiment_label": "中性",
+            "sentiment_score": "0",
+            "published_at": "2026-03-30",
+            "cues": "未提供"
+          }
+        ]
+      },
+      {
+        "title": "主题观察",
+        "description": "用于快速对比不同主题的讨论量与主导情绪。",
+        "columns": [
+          {
+            "key": "topic_name",
+            "label": "主题"
+          },
+          {
+            "key": "post_count",
+            "label": "帖子数"
+          },
+          {
+            "key": "dominant_sentiment_label",
+            "label": "主导情绪"
+          },
+          {
+            "key": "average_sentiment_score",
+            "label": "平均得分"
+          }
+        ],
+        "rows": [
+          {
+            "topic_name": "技术栈与工程",
+            "post_count": 8,
+            "dominant_sentiment_label": "中性",
+            "average_sentiment_score": "0.1158"
+          }
+        ]
       }
     ]
   }

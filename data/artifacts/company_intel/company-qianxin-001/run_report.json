@@ -16,6 +16,71 @@
     },
     "selection_mode": "auto"
   },
+  "task_payload": {
+    "task_id": "company-qianxin-001",
+    "scenario_template": "company_due_diligence",
+    "domain": "company_intel",
+    "targets": [
+      {
+        "type": "company",
+        "value": "奇安信"
+      }
+    ],
+    "topic_scope": [
+      "company_profile",
+      "product_update",
+      "tech_blog"
+    ],
+    "time_range": {
+      "start": "2025-09-18T00:00:00",
+      "end": "2026-03-18T23:59:59",
+      "timezone": "Asia/Shanghai"
+    },
+    "geo_scope": null,
+    "source_policy": {
+      "whitelist": [
+        "qianxin_news",
+        "qianxin_report",
+        "qianxin_update"
+      ],
+      "blacklist": [],
+      "selection_mode": "auto",
+      "prefer_official": true,
+      "allow_rss": false,
+      "allow_api": false,
+      "allow_html": true,
+      "max_sources": 6
+    },
+    "relevance_policy": {
+      "require_target_match": true,
+      "require_topic_match": false,
+      "require_cooccurrence": false,
+      "min_relevance_score": 0.6
+    },
+    "quality_policy": {
+      "required_fields": [
+        "title",
+        "source_url",
+        "published_at"
+      ],
+      "dedupe_mode": "strict",
+      "max_missing_ratio": 0.2
+    },
+    "output_policy": {
+      "writer": "sqlite",
+      "keep_raw": true,
+      "keep_normalized": true,
+      "max_output_records": 2000,
+      "update_mode": "replace"
+    },
+    "run_policy": {
+      "max_concurrency": 4,
+      "timeout_seconds": 20,
+      "retry_times": 2,
+      "enable_cache": false,
+      "allow_browser": false
+    }
+  },
   "selected_sources": [
     {
       "source_id": "qianxin_news",
@@ -75,12 +140,12 @@
     "cache_dir": null
   },
   "status": "success",
-  "created_at": "2026-03-24T06:07:03.193364+00:00",
+  "created_at": "2026-03-31T12:30:09.078995+00:00",
   "quality_summary": {
-    "raw_count": 52,
-    "normalized_count": 52,
-    "deduped_count": 52,
-    "output_count": 52,
+    "raw_count": 40,
+    "normalized_count": 40,
+    "deduped_count": 40,
+    "output_count": 40,
     "warning_count": 0,
     "fetch_request_count": 6,
     "fetch_network_request_count": 6,
@@ -89,9 +154,75 @@
     "fetch_retry_count": 0,
     "fetch_failure_count": 0,
     "source_stats": {
-      "qianxin_news": 20,
+      "qianxin_news": 10,
       "qianxin_report": 13,
-      "qianxin_update": 19
+      "qianxin_update": 17
+    },
+    "domain_summary": {
+      "kind": "company_intel",
+      "cards": [
+        {
+          "label": "事件数",
+          "value": 40
+        },
+        {
+          "label": "画像条数",
+          "value": 1
+        },
+        {
+          "label": "项目条数",
+          "value": 19
+        }
+      ],
+      "sections": [
+        {
+          "title": "跟踪公司",
+          "items": [
+            {
+              "label": "奇安信",
+              "value": 40
+            }
+          ]
+        },
+        {
+          "title": "高频项目",
+          "items": [
+            {
+              "label": "OpenClaw",
+              "value": 4
+            },
+            {
+              "label": "奇安信网神安全网络路由网关系统V1.0",
+              "value": 2
+            },
+            {
+              "label": "龙虾安全伴侣",
+              "value": 2
+            },
+            {
+              "label": "QcodeAgents",
+              "value": 1
+            },
+            {
+              "label": "SAFESKILL",
+              "value": 1
+            },
+            {
+              "label": "SaaS",
+              "value": 1
+            },
+            {
+              "label": "SecGate3600",
+              "value": 1
+            },
+            {
+              "label": "SecSSL3600",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "narrative": "共汇总 40 条公司情报事件，形成 1 条公司画像和 19 条项目记录。"
     }
   }
 }

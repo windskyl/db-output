@@ -519,3 +519,125 @@ textarea {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+.input-panel,
+.output-panel {
+  min-width: 0;
+}
+
+select[multiple] {
+  min-height: 200px;
+  padding: 8px;
+}
+
+select[multiple] option {
+  padding: 8px 10px;
+}
+
+.preview-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.preview-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+  padding: 16px;
+}
+
+.preview-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.preview-card-header h4 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.preview-card-header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.preview-table-wrap {
+  margin-top: 14px;
+  overflow: auto;
+  border: 1px solid rgba(23, 35, 33, 0.1);
+  border-radius: 14px;
+}
+
+.preview-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  background: #fffdf8;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(23, 35, 33, 0.08);
+  line-height: 1.6;
+}
+
+.preview-table th {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(216, 235, 229, 0.42);
+}
+
+.preview-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.preview-empty {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px dashed rgba(23, 35, 33, 0.16);
+  background: rgba(255, 253, 248, 0.9);
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.preview-empty.compact {
+  margin-top: 14px;
+  padding: 12px 14px;
+}
+
+.section-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.section-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(23, 35, 33, 0.08);
+}
+
+.section-label {
+  font-weight: 600;
+}
+
+.section-value {
+  color: var(--muted);
+}
+
+#resultNarrative {
+  min-height: 72px;
+}

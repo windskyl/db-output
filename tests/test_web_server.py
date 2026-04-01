@@ -39,6 +39,9 @@ class WebServerTests(unittest.TestCase):
         self.assertIn('db-output 本地工作台', html_text)
         self.assertIn('任务输入', html_text)
         self.assertIn('最近运行', html_text)
+        self.assertIn('结果预览', html_text)
+        self.assertIn('id="sourceWhitelist"', html_text)
+        self.assertIn('id="resultPreview"', html_text)
 
     def test_tasks_route_returns_empty_list_for_fresh_base_dir(self) -> None:
         body = json.dumps({'limit': 5}, ensure_ascii=False).encode('utf-8')
@@ -95,6 +98,8 @@ class WebServerTests(unittest.TestCase):
         self.assertTrue(payload['ok'])
         self.assertEqual(payload['result']['task_payload']['task_id'], 'web-public-sentiment-001')
         self.assertEqual(payload['result']['run_report']['task_payload']['task_id'], 'web-public-sentiment-001')
+        self.assertEqual(payload['result']['result_preview']['kind'], 'public_sentiment')
+        self.assertGreaterEqual(len(payload['result']['result_preview']['tables']), 1)
 
     def test_task_route_exposes_full_task_payload_for_reuse(self) -> None:
         task = {
@@ -130,6 +135,8 @@ class WebServerTests(unittest.TestCase):
         self.assertTrue(payload['ok'])
         self.assertEqual(payload['result']['task_payload']['task_id'], 'web-jobs-001')
         self.assertEqual(payload['result']['task_payload']['targets'][0]['value'], 'Python')
+        self.assertEqual(payload['result']['result_preview']['kind'], 'jobs')
+        self.assertEqual(payload['result']['result_preview']['tables'][0]['title'], '最新岗位样本')
 
     def test_form_draft_route_returns_task_payload(self) -> None:
         body = json.dumps(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sqlite3
 from pathlib import Path
@@ -23,162 +24,234 @@ _COMPANY_PROJECT_TOKEN_STOPWORDS = {
     'Q4',
     'GITHUB',
     'AIAGENT',
+    'IDCMARKETGLANCE',
+    'GITHUBADVISORYDATA',
 }
 
 _COMPANY_NAME_STOPWORDS = {
-    '\u5947\u5b89\u4fe1',
-    '\u5947\u5b89\u4fe1\u96c6\u56e2',
-    '\u4ea7\u54c1\u516c\u544a',
-    '\u5347\u7ea7\u516c\u544a',
+    '奇安信',
+    '奇安信集团',
+    '产品公告',
+    '升级公告',
 }
 
 _COMPANY_DOCUMENT_MARKERS = (
-    '\u62a5\u544a',
-    '\u7814\u7a76',
-    '\u6307\u5357',
-    '\u767d\u76ae\u4e66',
-    '\u901a\u544a',
+    '报告',
+    '研究',
+    '指南',
+    '白皮书',
+    '通告',
 )
 
 _COMPANY_PROJECT_NAME_MARKERS = (
-    '\u5e73\u53f0',
-    '\u7cfb\u7edf',
-    '\u6d4f\u89c8\u5668',
-    '\u65b9\u6848',
-    '\u667a\u80fd\u4f53',
-    '\u4f34\u4fa3',
-    '\u7f51\u5173',
-    '\u9632\u706b\u5899',
-    '\u5f15\u64ce',
-    '\u7ec8\u7aef',
-    '\u5de5\u4f5c\u53f0',
-    '\u9879\u76ee',
+    '平台',
+    '系统',
+    '浏览器',
+    '方案',
+    '伴侣',
+    '网关',
+    '防火墙',
+    '引擎',
+    '终端',
+    '工作台',
+    '项目',
 )
 
 _COMPANY_PROJECT_NOISE_MARKERS = (
-    '\u4e2d\u56fd\u4f01\u4e1a\u5bb6',
-    '\u592e\u89c6',
-    '\u8d22\u7ecf',
-    '\u8bc4\u8bba',
-    '\u65b0\u95fb\u8054\u64ad',
-    '\u7ecf\u6d4e\u534a\u5c0f\u65f6',
-    '\u4e24\u4f1a',
-    '\u521b\u5ba2\u6c47',
+    '中国企业家',
+    '央视',
+    '财经',
+    '评论',
+    '新闻联播',
+    '经济半小时',
+    '两会',
+    '创客汇',
+    '媒体聚焦',
+    '独家对话',
 )
 
+_COMPANY_PROJECT_SENTENCE_PUNCTUATION = re.compile(r'[:：|?!？！；;，,。]')
+_COMPANY_PROJECT_MODEL_TOKEN_PATTERN = re.compile(r'^[A-Z]{2,}(?:-[A-Z]{1,})+$')
+
 _SENTIMENT_POSITIVE_CUES = (
-    ('good', r'\bgood\b', 1.0),
-    ('great', r'\bgreat\b', 1.2),
-    ('better', r'\bbetter\b', 0.8),
-    ('improve', r'\bimprov(?:e|es|ed|ing)\b', 0.8),
-    ('helpful', r'\bhelpful\b', 1.0),
-    ('useful', r'\buseful\b', 1.0),
-    ('innovative', r'\binnovative\b', 0.8),
-    ('powerful', r'\bpowerful\b', 0.8),
-    ('fast', r'\bfast\b', 0.5),
-    ('love', r'\blove\b', 1.2),
-    ('success', r'\bsuccess(?:ful)?\b', 1.0),
-    ('leading', r'\bleading\b', 0.8),
-    ('best', r'\bbest\b', 1.2),
-    ('no api key needed', r'no api key needed', 1.5),
-    ('no extra billing', r'no extra billing', 1.5),
-    ('simplify', r'\bsimplif(?:y|ies|ied|ying)\b', 0.8),
-    ('easier', r'\beasier\b', 0.8),
-    ('reusable', r'\breusable\b', 0.6),
-    ('\u597d\u8bc4', '\u597d\u8bc4', 1.2),
-    ('\u65b9\u4fbf', '\u65b9\u4fbf', 0.8),
-    ('\u6709\u7528', '\u6709\u7528', 1.0),
-    ('\u6613\u7528', '\u6613\u7528', 0.8),
-    ('\u63d0\u5347', '\u63d0\u5347', 0.8),
-    ('\u6539\u5584', '\u6539\u5584', 0.8),
-    ('\u7a33\u5b9a', '\u7a33\u5b9a', 0.8),
-    ('\u5f3a\u5927', '\u5f3a\u5927', 0.8),
-    ('\u559c\u6b22', '\u559c\u6b22', 1.0),
-    ('\u9886\u5148', '\u9886\u5148', 0.8),
+    ('good', '\\bgood\\b', 1.0),
+    ('great', '\\bgreat\\b', 1.2),
+    ('better', '\\bbetter\\b', 0.8),
+    ('improve', '\\bimprov(?:e|es|ed|ing)\\b', 0.8),
+    ('helpful', '\\bhelpful\\b', 1.0),
+    ('useful', '\\buseful\\b', 1.0),
+    ('innovative', '\\binnovative\\b', 0.8),
+    ('powerful', '\\bpowerful\\b', 0.8),
+    ('fast', '\\bfast\\b', 0.5),
+    ('love', '\\blove\\b', 1.2),
+    ('success', '\\bsuccess(?:ful)?\\b', 1.0),
+    ('leading', '\\bleading\\b', 0.8),
+    ('best', '\\bbest\\b', 1.2),
+    ('stable', '\\bstable\\b', 0.8),
+    ('reliable', '\\breliable\\b', 0.8),
+    ('solid', '\\bsolid\\b', 0.6),
+    ('worth it', 'worth it', 0.8),
+    ('works well', 'works well', 0.8),
+    ('no api key needed', 'no api key needed', 1.5),
+    ('no extra billing', 'no extra billing', 1.5),
+    ('simplify', '\\bsimplif(?:y|ies|ied|ying)\\b', 0.8),
+    ('easier', '\\beasier\\b', 0.8),
+    ('reusable', '\\breusable\\b', 0.6),
+    ('好评', '好评', 1.2),
+    ('方便', '方便', 0.8),
+    ('有用', '有用', 1.0),
+    ('易用', '易用', 0.8),
+    ('提升', '提升', 0.8),
+    ('改善', '改善', 0.8),
+    ('稳定', '稳定', 0.8),
+    ('强大', '强大', 0.8),
+    ('喜欢', '喜欢', 1.0),
+    ('领先', '领先', 0.8),
 )
 
 _SENTIMENT_NEGATIVE_CUES = (
-    ('under fire', r'under fire', 1.5),
-    ('critic', r'\bcritic(?:s|ism)?\b', 1.0),
-    ('disgusting', r'\bdisgusting\b', 1.5),
-    ('bad', r'\bbad\b', 1.0),
-    ('worse', r'\bworse\b', 1.0),
-    ('risk', r'\brisk(?:s)?\b', 0.8),
-    ('unsafe', r'\bunsafe\b', 1.5),
-    ('fail', r'\bfail(?:ure|ed|ing)?\b', 1.0),
-    ('cut back', r'cut back', 1.2),
-    ('concern', r'\bconcern(?:s)?\b', 0.8),
-    ('issue', r'\bissue(?:s)?\b', 0.8),
-    ('\u4e89\u8bae', '\u4e89\u8bae', 1.0),
-    ('\u6279\u8bc4', '\u6279\u8bc4', 1.0),
-    ('\u7cdf\u7cd5', '\u7cdf\u7cd5', 1.2),
-    ('\u98ce\u9669', '\u98ce\u9669', 0.8),
-    ('\u95ee\u9898', '\u95ee\u9898', 0.8),
-    ('\u62c5\u5fe7', '\u62c5\u5fe7', 0.8),
-    ('\u5931\u671b', '\u5931\u671b', 1.0),
-    ('\u7ffb\u8f66', '\u7ffb\u8f66', 1.2),
-    ('\u88c1\u5458', '\u88c1\u5458', 1.0),
+    ('under fire', 'under fire', 1.6),
+    ('critic', '\\bcritic(?:s|ism)?\\b', 1.0),
+    ('disgusting', '\\bdisgusting\\b', 1.5),
+    ('bad', '\\bbad\\b', 1.0),
+    ('worse', '\\bworse\\b', 1.0),
+    ('risk', '\\brisk(?:s)?\\b', 0.8),
+    ('unsafe', '\\bunsafe\\b', 1.5),
+    ('fail', '\\bfail(?:ure|ed|ing)?\\b', 1.0),
+    ('cut back', 'cut back', 1.2),
+    ('concern', '\\bconcern(?:s)?\\b', 0.8),
+    ('issue', '\\bissue(?:s)?\\b', 0.8),
+    ('shutting down', '\\bshut(?:ting)? down\\b', 1.6),
+    ('shutdown', '\\bshutdown\\b', 1.5),
+    ('gave up', '\\bg(?:ive|ave) up\\b', 1.4),
+    ('killed', '\\bkill(?:ed|ing)?\\b', 1.4),
+    ('abandoned', '\\babandon(?:ed|ing)?\\b', 1.4),
+    ('broken', '\\bbroken\\b', 1.2),
+    ('buggy', '\\bbuggy\\b', 1.0),
+    ('unstable', '\\bunstable\\b', 1.1),
+    ('no longer works', 'no longer works', 1.4),
+    ('does not work', "does(?:n't| not) work", 1.4),
+    ('not worth', 'not worth', 1.2),
+    ('争议', '争议', 1.0),
+    ('批评', '批评', 1.0),
+    ('糟糕', '糟糕', 1.2),
+    ('风险', '风险', 0.8),
+    ('问题', '问题', 0.8),
+    ('担忧', '担忧', 0.8),
+    ('失望', '失望', 1.0),
+    ('翻车', '翻车', 1.2),
+    ('裁员', '裁员', 1.0),
+    ('下线', '下线', 1.5),
+    ('停用', '停用', 1.3),
+    ('放弃', '放弃', 1.3),
+    ('砍掉', '砍掉', 1.3),
+    ('不稳定', '不稳定', 1.0),
+    ('不靠谱', '不靠谱', 1.1),
+    ('不推荐', '不推荐', 1.2),
 )
 
 _SENTIMENT_NEGATED_NEGATIVE_CUES = (
-    ('not bad', r'not bad', 1.0),
-    ('not worse', r'not worse', 1.0),
-    ('no problem', r'no problem', 1.0),
-    ('no problems', r'no problems', 1.0),
-    ('without issue', r'without issue', 0.8),
-    ('without issues', r'without issues', 0.8),
-    ('\u4e0d\u5dee', '\u4e0d\u5dee', 1.0),
-    ('\u6ca1\u95ee\u9898', '\u6ca1\u95ee\u9898', 1.0),
-    ('\u6ca1\u6709\u95ee\u9898', '\u6ca1\u6709\u95ee\u9898', 1.0),
-    ('\u65e0\u95ee\u9898', '\u65e0\u95ee\u9898', 1.0),
+    ('not bad', 'not bad', 1.0),
+    ('not worse', 'not worse', 1.0),
+    ('no problem', 'no problem', 1.0),
+    ('no problems', 'no problems', 1.0),
+    ('without issue', 'without issue', 0.8),
+    ('without issues', 'without issues', 0.8),
+    ('not terrible', 'not terrible', 1.1),
+    ('not awful', 'not awful', 1.1),
+    ('not broken', 'not broken', 1.0),
+    ('not unstable', 'not unstable', 1.0),
+    ('不差', '不差', 1.0),
+    ('没问题', '没问题', 1.0),
+    ('没有问题', '没有问题', 1.0),
+    ('无问题', '无问题', 1.0),
+    ('没那么差', '没那么差', 1.0),
+    ('不算差', '不算差', 0.8),
 )
 
 _SENTIMENT_NEGATED_POSITIVE_CUES = (
-    ('not good', r'not good', 1.0),
-    ('not great', r'not great', 1.2),
-    ('not helpful', r'not helpful', 1.0),
-    ('not useful', r'not useful', 1.0),
-    ('not better', r'not better', 0.8),
-    ('\u4e0d\u597d', '\u4e0d\u597d', 1.0),
-    ('\u4e0d\u597d\u7528', '\u4e0d\u597d\u7528', 1.2),
-    ('\u4e0d\u7a33\u5b9a', '\u4e0d\u7a33\u5b9a', 1.0),
-    ('\u4e0d\u65b9\u4fbf', '\u4e0d\u65b9\u4fbf', 1.0),
-    ('\u6ca1\u7528', '\u6ca1\u7528', 1.0),
+    ('not good', 'not good', 1.0),
+    ('not great', 'not great', 1.2),
+    ('not helpful', 'not helpful', 1.0),
+    ('not useful', 'not useful', 1.0),
+    ('not better', 'not better', 0.8),
+    ('not stable', 'not stable', 1.0),
+    ('not reliable', 'not reliable', 1.0),
+    ("can't recommend", "can't recommend", 1.2),
+    ('cannot recommend', 'cannot recommend', 1.2),
+    ("wouldn't recommend", "wouldn't recommend", 1.2),
+    ('not recommended', 'not recommended', 1.2),
+    ('不好', '不好', 1.0),
+    ('不好用', '不好用', 1.2),
+    ('不稳定', '不稳定', 1.0),
+    ('不方便', '不方便', 1.0),
+    ('没用', '没用', 1.0),
+    ('不靠谱', '不靠谱', 1.1),
+    ('不推荐', '不推荐', 1.2),
+)
+
+_SENTIMENT_INTENSIFIERS = (
+    ('\\breally\\b', 1.2),
+    ('\\bvery\\b', 1.2),
+    ('\\bsuper\\b', 1.3),
+    ('\\bextremely\\b', 1.5),
+    ('\\bserious(?:ly)?\\b', 1.25),
+    ('\\bmajor\\b', 1.2),
+    ('\\bhuge\\b', 1.2),
+    ('非常', 1.3),
+    ('特别', 1.3),
+    ('极其', 1.4),
+    ('很', 1.1),
+    ('太', 1.15),
+)
+
+_SENTIMENT_DOWNTONERS = (
+    ('\\bslightly\\b', 0.7),
+    ('\\bsomewhat\\b', 0.8),
+    ('kind of', 0.75),
+    ('a bit', 0.75),
+    ('a little', 0.75),
+    ('\\brelatively\\b', 0.85),
+    ('有点', 0.75),
+    ('有一点', 0.75),
+    ('略微', 0.7),
+    ('比较', 0.85),
+    ('还算', 0.85),
 )
 
 _JOB_SKILL_PATTERNS = (
-    ('Python', 'language', (r'\bpython\b',)),
-    ('Django', 'framework', (r'\bdjango\b',)),
-    ('Flask', 'framework', (r'\bflask\b',)),
-    ('FastAPI', 'framework', (r'\bfastapi\b',)),
-    ('DevOps', 'practice', (r'\bdevops\b',)),
-    ('Cloud', 'domain', (r'\bcloud\b',)),
-    ('Web', 'domain', (r'\bweb\b',)),
-    ('Security', 'domain', (r'\bsecurity\b',)),
-    ('Backend', 'domain', (r'\bback[\s-]?end\b',)),
-    ('Frontend', 'domain', (r'\bfront[\s-]?end\b',)),
-    ('Support', 'domain', (r'\bsupport\b',)),
-    ('AWS', 'cloud', (r'\baws\b', r'amazon web services')),
-    ('Azure', 'cloud', (r'\bazure\b',)),
-    ('GCP', 'cloud', (r'\bgcp\b', r'google cloud')),
-    ('Docker', 'tool', (r'\bdocker\b',)),
-    ('Kubernetes', 'tool', (r'\bkubernetes\b',)),
-    ('Terraform', 'tool', (r'\bterraform\b',)),
-    ('Grafana', 'tool', (r'\bgrafana\b',)),
-    ('CI/CD', 'practice', (r'\bci/cd\b', r'\bci cd\b')),
-    ('Linux', 'platform', (r'\blinux\b',)),
-    ('Unix', 'platform', (r'\bunix\b',)),
-    ('Documentation', 'practice', (r'\bdocumentation\b', r'\bdocumenting\b')),
-    ('Monitoring', 'domain', (r'\bmonitoring\b',)),
-    ('Visualization', 'domain', (r'\bvisualization\b',)),
-    ('Federated Learning', 'domain', (r'federated learning',)),
-    ('Open Source', 'practice', (r'open-source', r'open source')),
-    ('APPFL', 'tool', (r'\bappfl\b',)),
-    ('Big Data', 'domain', (r'big data',)),
-    ('Performance', 'practice', (r'\bperformance\b',)),
-    ('Scalability', 'practice', (r'\bscalability\b',)),
-    ('Automation', 'practice', (r'\bautomation\b',)),
+    ('Python', 'language', ('title', 'content_text', 'category', 'source_tag'), (r'\bpython\b',)),
+    ('Django', 'framework', ('title', 'content_text', 'category', 'source_tag'), (r'\bdjango\b',)),
+    ('Flask', 'framework', ('title', 'content_text', 'category', 'source_tag'), (r'\bflask\b',)),
+    ('FastAPI', 'framework', ('title', 'content_text', 'category', 'source_tag'), (r'\bfastapi\b',)),
+    ('DevOps', 'practice', ('title', 'content_text', 'category', 'source_tag'), (r'\bdevops\b',)),
+    ('Cloud', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'\bcloud\b',)),
+    ('Web', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'\bweb applications?\b', r'\bweb development\b', r'\bweb frameworks?\b', r'\bweb scrapers?\b')),
+    ('Security', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'\bapplication security\b', r'\bcloud security\b', r'\bsecurity policies?\b', r'\bsecurity questionnaires?\b', r'\bsecurity best practices\b', r'\bsecurity requirements?\b', r'\bsecurity tooling\b', r'\bsecurity engineer(?:ing)?\b')),
+    ('Backend', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'\bback[\s-]?end\b', r'\bbackend services?\b', r'\bbackend development\b')),
+    ('Frontend', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'\bfront[\s-]?end\b', r'\bfrontend development\b', r'\bfrontend knowledge\b')),
+    ('AWS', 'cloud', ('title', 'content_text', 'category', 'source_tag'), (r'\baws\b', r'amazon web services')),
+    ('Azure', 'cloud', ('title', 'content_text', 'category', 'source_tag'), (r'\bazure\b',)),
+    ('GCP', 'cloud', ('title', 'content_text', 'category', 'source_tag'), (r'\bgcp\b', r'google cloud')),
+    ('Docker', 'tool', ('title', 'content_text', 'category', 'source_tag'), (r'\bdocker\b',)),
+    ('Kubernetes', 'tool', ('title', 'content_text', 'category', 'source_tag'), (r'\bkubernetes\b',)),
+    ('Terraform', 'tool', ('title', 'content_text', 'category', 'source_tag'), (r'\bterraform\b',)),
+    ('Grafana', 'tool', ('title', 'content_text', 'category', 'source_tag'), (r'\bgrafana\b',)),
+    ('CI/CD', 'practice', ('title', 'content_text', 'category', 'source_tag'), (r'\bci/cd\b', r'\bci cd\b')),
+    ('Linux', 'platform', ('title', 'content_text', 'category', 'source_tag'), (r'\blinux\b',)),
+    ('Unix', 'platform', ('title', 'content_text', 'category', 'source_tag'), (r'\bunix\b',)),
+    ('Documentation', 'practice', ('title', 'content_text', 'category', 'source_tag'), (r'\bdocumentation\b', r'\bdocumenting\b', r'documentation-driven')),
+    ('Monitoring', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'\bmonitoring\b',)),
+    ('Visualization', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'\bvisualization\b',)),
+    ('Federated Learning', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'federated learning',)),
+    ('Open Source', 'practice', ('title', 'content_text', 'category', 'source_tag'), (r'open-source', r'open source')),
+    ('APPFL', 'tool', ('title', 'content_text', 'category', 'source_tag'), (r'\bappfl\b',)),
+    ('Big Data', 'domain', ('title', 'content_text', 'category', 'source_tag'), (r'big data',)),
+    ('Performance', 'practice', ('title', 'content_text', 'category', 'source_tag'), (r'\bperformance tuning\b', r'\bperformance optimization\b', r'\bperformant\b', r'\bhigh-performance\b', r'\boptimi(?:s|z)e(?:d|s|ing)?\b[^.]{0,40}\bperformance\b')),
+    ('Scalability', 'practice', ('title', 'content_text', 'category', 'source_tag'), (r'\bscalability\b', r'\bscalable\b')),
+    ('Automation', 'practice', ('title', 'content_text', 'category', 'source_tag'), (r'\bautomation\b',)),
 )
+
 
 
 class SQLiteWriter:
@@ -511,13 +584,16 @@ class SQLiteWriter:
 
     def _extract_job_skills(self, record: NormalizedRecord) -> list[tuple[str, str, str]]:
         matches: dict[str, tuple[str, str]] = {}
-        for field_name, text in self._job_skill_sources(record).items():
-            lower_text = text.lower()
-            for skill_name, skill_type, patterns in _JOB_SKILL_PATTERNS:
-                if skill_name in matches:
-                    continue
+        sources = self._job_skill_sources(record)
+        for skill_name, skill_type, fields, patterns in _JOB_SKILL_PATTERNS:
+            if skill_name in matches:
+                continue
+            for field_name in fields:
+                text = sources.get(field_name, '')
+                lower_text = text.lower()
                 if any(re.search(pattern, lower_text) for pattern in patterns):
                     matches[skill_name] = (skill_type, field_name)
+                    break
         return [(skill_name, skill_type, evidence_field) for skill_name, (skill_type, evidence_field) in matches.items()]
 
     def _job_skill_sources(self, record: NormalizedRecord) -> dict[str, str]:
@@ -874,6 +950,10 @@ class SQLiteWriter:
                             "most_neutral_cues": row["most_neutral_cues"],
                             "positive_cue_counts": self._serialize_cue_counts(row["positive_cue_counts"]),
                             "negative_cue_counts": self._serialize_cue_counts(row["negative_cue_counts"]),
+                            "positive_share": round(int(row["positive_count"]) / max(int(row["post_count"]), 1), 4),
+                            "neutral_share": round(int(row["neutral_count"]) / max(int(row["post_count"]), 1), 4),
+                            "negative_share": round(int(row["negative_count"]) / max(int(row["post_count"]), 1), 4),
+                            "sentiment_balance": round((int(row["positive_count"]) - int(row["negative_count"])) / max(int(row["post_count"]), 1), 4),
                         },
                         ensure_ascii=False,
                     ),
@@ -933,24 +1013,39 @@ class SQLiteWriter:
         return self._dedupe_preserve_order(candidates)
 
     def _extract_update_project_name(self, title: str) -> str | None:
-        candidate = re.sub(r'(\u4ea7\u54c1\u7248\u672c)?\u5347\u7ea7\u516c\u544a.*$', '', title).strip(' -\u2014')
-        candidate = re.sub(r'\u66f4\u65b0\u901a\u544a.*$', '', candidate).strip(' -\u2014')
-        candidate = re.sub(r'\u4ea7\u54c1\u516c\u544a.*$', '', candidate).strip(' -\u2014')
-        candidate = re.sub(r'^\u5947\u5b89\u4fe1\u96c6\u56e2\d{4}\u5e74\d{2}\u6708', '', candidate).strip(' -\u2014')
+        candidate = title.strip()
+        for pattern in (
+            r'(?:产品版本)?升级公.*$',
+            r'更新通告.*$',
+            r'产品公告.*$',
+            r'产品.*$',
+            r'(?:部分型号)?正式停售公告.*$',
+            r'正式停售公告.*$',
+            r'停售公告.*$',
+            r'正式停服公告.*$',
+            r'停服公告.*$',
+            r'公告.*$',
+        ):
+            candidate = re.sub(pattern, '', candidate).strip(' -—')
+        candidate = re.sub(r'^奇安信集团\d{4}年\d{2}月', '', candidate).strip(' -—')
         candidate = self._normalize_project_candidate(candidate)
-        if not candidate or '\u8865\u4e01\u5e93' in candidate:
+        if not candidate or '补丁库' in candidate:
+            return None
+        if not self._looks_like_company_project_name(candidate):
             return None
         return candidate if self._is_valid_company_project_candidate(candidate) else None
 
     def _normalize_project_candidate(self, value: str) -> str:
-        candidate = ' '.join(str(value).replace('\u3000', ' ').split())
-        candidate = candidate.strip(" \t\r\n-:,.;()[]<>'\"")
-        return candidate.strip("\u2014\u3001\u3002\u300a\u300b\u3010\u3011\u201c\u201d\uff08\uff09\uff1a\uff0c\uff1b")
+        candidate = ' '.join(str(value).replace('　', ' ').split())
+        candidate = candidate.strip(" \t\r\n-:,.;[]<>'\"")
+        return candidate.strip('—、。《》【】“”：，；')
 
     def _is_valid_company_project_candidate(self, candidate: str) -> bool:
         if not candidate or len(candidate) < 2 or len(candidate) > 80:
             return False
         if candidate in _COMPANY_NAME_STOPWORDS:
+            return False
+        if candidate.upper() in _COMPANY_PROJECT_TOKEN_STOPWORDS:
             return False
         if any(marker in candidate for marker in _COMPANY_PROJECT_NOISE_MARKERS):
             return False
@@ -960,21 +1055,28 @@ class SQLiteWriter:
             return False
         if any(marker in candidate for marker in _COMPANY_DOCUMENT_MARKERS):
             return False
-        if re.search(r'[:|闁挎稑琚埀顒€鍋婄槐鎺楁晬?!]', candidate):
+        if _COMPANY_PROJECT_SENTENCE_PUNCTUATION.search(candidate):
             return False
-        if len(candidate) > 18 and not re.search(r'[A-Za-z0-9-]', candidate):
+        if len(candidate) > 18 and not re.search(r'[A-Za-z0-9-（）()]', candidate):
+            return False
+        if _COMPANY_PROJECT_MODEL_TOKEN_PATTERN.fullmatch(candidate):
             return False
         return True
 
     def _looks_like_company_project_name(self, candidate: str) -> bool:
-        if re.search(r'[:|闁挎稑琚埀顒€鍋婄槐鎺楁晬?!]', candidate):
-            return True
+        if _COMPANY_PROJECT_SENTENCE_PUNCTUATION.search(candidate):
+            return False
+        if candidate.isascii():
+            return bool(re.search(r'[A-Z0-9-]', candidate))
         return any(marker in candidate for marker in _COMPANY_PROJECT_NAME_MARKERS)
+
     def _is_valid_company_project_token(self, token: str) -> bool:
         upper = token.upper()
         if upper in _COMPANY_PROJECT_TOKEN_STOPWORDS:
             return False
         if any(marker in token for marker in _COMPANY_PROJECT_NOISE_MARKERS):
+            return False
+        if _COMPANY_PROJECT_MODEL_TOKEN_PATTERN.fullmatch(token):
             return False
         if token.islower() and not any(char.isdigit() for char in token):
             return False
@@ -1027,7 +1129,8 @@ class SQLiteWriter:
                 "positive_cues": [],
                 "negative_cues": [],
             }
-        score = round((positive_score_total - negative_score_total) / total_score, 4)
+        signal_delta = positive_score_total - negative_score_total
+        score = round(math.tanh(signal_delta / 2.5), 4)
         if score >= 0.2:
             label = "positive"
         elif score <= -0.2:
@@ -1048,9 +1151,28 @@ class SQLiteWriter:
     def _match_sentiment_cues(self, text: str, cues: tuple[tuple[str, str, float], ...]) -> list[dict[str, object]]:
         matches: list[dict[str, object]] = []
         for label, pattern, weight in cues:
-            if re.search(pattern, text):
-                matches.append({"label": label, "weight": float(weight)})
+            best_weight: float | None = None
+            for match in re.finditer(pattern, text):
+                adjusted_weight = float(weight) * self._sentiment_context_multiplier(text, match.start(), match.end())
+                if best_weight is None or adjusted_weight > best_weight:
+                    best_weight = adjusted_weight
+            if best_weight is not None:
+                matches.append({"label": label, "weight": round(float(best_weight), 4)})
         return matches
+
+    def _sentiment_context_multiplier(self, text: str, start: int, end: int) -> float:
+        window_start = max(0, start - 24)
+        window_end = min(len(text), end + 12)
+        context = text[window_start:window_end]
+        intensifier_scale = 1.0
+        downtoner_scale = 1.0
+        for pattern, factor in _SENTIMENT_INTENSIFIERS:
+            if re.search(pattern, context):
+                intensifier_scale = max(intensifier_scale, float(factor))
+        for pattern, factor in _SENTIMENT_DOWNTONERS:
+            if re.search(pattern, context):
+                downtoner_scale = min(downtoner_scale, float(factor))
+        return round(intensifier_scale * downtoner_scale, 4)
 
     def _sentiment_topic_names(self, record: NormalizedRecord) -> list[str]:
         raw_topics = record.extra.get("matched_topics", record.topic_tags)

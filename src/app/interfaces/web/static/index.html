@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -12,11 +12,11 @@
       <div>
         <p class="eyebrow">db-output 本地工作台</p>
         <h1>本地规则采集工作台</h1>
-        <p class="hero-copy">在同一个页面里输入需求、导入本地任务文档、校验并运行任务，然后查看结构化结果和易懂摘要。</p>
+        <p class="hero-copy">在同一个页面里完成任务录入、文档导入、校验、运行和结果查看，快速复用已经跑过的任务配置与结果摘要。</p>
       </div>
       <div class="hero-note">
         <h2>安全边界</h2>
-        <p>网页只接受 <code>.json</code>、<code>.md</code>、<code>.txt</code> 文本文档，上传大小限制为 300KB，会拒绝二进制内容，也不会执行任何上传文件中的代码。</p>
+        <p>网页只接受 <code>.json</code>、<code>.md</code>、<code>.txt</code> 文本文档，上传大小限制为 300KB。非 JSON 文档只做文本解析，不执行任何上传内容中的代码。</p>
       </div>
     </header>
 
@@ -34,7 +34,7 @@
         <div class="tabs" role="tablist">
           <button class="tab-btn active" data-tab="form" type="button">表单配置</button>
           <button class="tab-btn" data-tab="document" type="button">文档导入</button>
-          <button class="tab-btn" data-tab="json" type="button">????</button>
+          <button class="tab-btn" data-tab="json" type="button">JSON 编辑</button>
         </div>
 
         <div class="tab-panel active" data-tab-panel="form">
@@ -44,15 +44,14 @@
               <select id="domainSelect"></select>
             </label>
             <label>
-<label>
-  <span>????</span>
-  <select id="scenarioInput">
-    <option value="job_hunt_engineering_basic">??????</option>
-    <option value="company_due_diligence">??????</option>
-    <option value="investment_market_quote_basic">??????</option>
-    <option value="company_sentiment_tracking_basic">??????</option>
-  </select>
-</label>
+              <span>场景模板</span>
+              <select id="scenarioInput">
+                <option value="job_hunt_engineering_basic">求职工程化基础</option>
+                <option value="company_due_diligence">公司尽调基础</option>
+                <option value="investment_market_quote_basic">行情跟踪基础</option>
+                <option value="company_sentiment_tracking_basic">舆情跟踪基础</option>
+              </select>
+            </label>
             <label>
               <span>任务 ID</span>
               <input id="taskIdInput" type="text" placeholder="留空时自动生成" />
@@ -84,7 +83,7 @@
             <label>
               <span>来源选择方式</span>
               <select id="selectionModeSelect">
-                <option value="auto">自动</option>
+                <option value="auto">自动选择</option>
                 <option value="explicit">显式指定</option>
               </select>
             </label>
@@ -108,30 +107,30 @@
           </div>
 
           <div class="field-block">
-            <label><input id="allowHtmlInput" type="checkbox" checked /> HTML ??</label>
-            <label><input id="allowRssInput" type="checkbox" checked /> RSS ??</label>
-            <label><input id="allowApiInput" type="checkbox" checked /> API ??</label>
+            <label class="editor-label" for="sourceWhitelist">显式来源白名单</label>
+            <select id="sourceWhitelist" multiple size="8"></select>
+            <p class="field-help">当来源选择方式为“显式指定”时，从这里选择允许使用的数据源。</p>
           </div>
 
           <div class="toggle-row">
-            <label><input id="allowHtmlInput" type="checkbox" checked /> HTML ??</label>
-            <label><input id="allowRssInput" type="checkbox" checked /> RSS ??</label>
-            <label><input id="allowApiInput" type="checkbox" checked /> API ??</label>
+            <label><input id="allowHtmlInput" type="checkbox" checked /> 允许 HTML 来源</label>
+            <label><input id="allowRssInput" type="checkbox" checked /> 允许 RSS 来源</label>
+            <label><input id="allowApiInput" type="checkbox" checked /> 允许 API 来源</label>
             <label><input id="preferOfficialInput" type="checkbox" /> 优先官方来源</label>
             <label><input id="enableCacheInput" type="checkbox" /> 启用缓存</label>
           </div>
 
           <button id="buildFromFormBtn" class="primary-btn" type="button">生成任务草稿</button>
         </div>
-          <p class="field-help">?????????????????? Markdown/Text ??????????????????????????????????????</p>
+
         <div class="tab-panel" data-tab-panel="document">
           <div class="upload-box">
             <input id="documentInput" type="file" accept=".json,.md,.txt" />
             <button id="importDocumentBtn" class="primary-btn" type="button">安全导入并生成草稿</button>
           </div>
-          <p class="field-help">可以直接导入任务 JSON，也可以导入 Markdown/Text 文档让服务端提取任务草稿。非 JSON 文本只按纯文本解析，不会执行其中任何内容。</p>
+          <p class="field-help">可以直接导入任务 JSON，也可以导入 Markdown 或 Text 文档，让服务端提取任务草稿并提示启发式解析告警。</p>
           <div class="preview-box">
-          <label class="editor-label" for="taskJsonEditor">????</label>
+            <div class="preview-head">导入预览</div>
             <pre id="documentPreview">尚未导入文档。</pre>
           </div>
         </div>
@@ -139,7 +138,8 @@
         <div class="tab-panel" data-tab-panel="json">
           <label class="editor-label" for="taskJsonEditor">任务 JSON</label>
           <textarea id="taskJsonEditor" spellcheck="false"></textarea>
-          <button id="downloadTaskBtn" class="ghost-btn" type="button">??????</button>
+          <p class="field-help">表单生成、示例载入和文档导入都会把结果写到这里。校验、运行、报告读取都以这里的 JSON 为准。</p>
+        </div>
 
         <div class="action-bar">
           <button id="validateBtn" class="ghost-btn" type="button">校验任务</button>
@@ -154,26 +154,31 @@
           <h2>结果查看</h2>
           <p id="statusBadge" class="status-badge idle">空闲</p>
         </div>
-<section class="result-section split-section">
-  <div>
-    <h3>????</h3>
-    <div id="taskOverview" class="list-card"></div>
-  </div>
-  <div>
-    <h3>????</h3>
-    <div id="qualityWarnings" class="list-card"></div>
-  </div>
-</section>
 
-<section class="result-section">
-  <h3>????</h3>
-  <div id="summaryCards" class="summary-grid"></div>
-</section>
+        <section class="result-section">
+          <h3>操作摘要</h3>
+          <div id="resultNarrative" class="narrative-card">请选择领域，然后填写表单或导入本地文档。先生成任务草稿，再执行校验或运行。</div>
+        </section>
+
+        <section class="result-section split-section">
+          <div>
+            <h3>任务概览</h3>
+            <div id="taskOverview" class="list-card">暂无任务上下文。</div>
+          </div>
+          <div>
+            <h3>质量告警</h3>
+            <div id="qualityWarnings" class="list-card">暂无质量告警。</div>
+          </div>
         </section>
 
         <section class="result-section">
           <h3>摘要卡片</h3>
           <div id="summaryCards" class="summary-grid"></div>
+        </section>
+
+        <section class="result-section">
+          <h3>结果预览</h3>
+          <div id="resultPreview" class="preview-stack"></div>
         </section>
 
         <section class="result-section">

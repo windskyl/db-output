@@ -186,6 +186,61 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertIn(('job-python-org-001-python_org_jobs_rss-2', 'Terraform'), skill_map)
             self.assertIn(('job-python-org-001-python_org_jobs_rss-2', 'Grafana'), skill_map)
             self.assertIn(('job-python-org-001-python_org_jobs_rss-2', 'CI/CD'), skill_map)
+    def test_jobs_skill_extraction_filters_broad_noise_but_keeps_specific_phrases(self) -> None:
+        writer = SQLiteWriter()
+        noisy_record = NormalizedRecord(
+            task_id='job-skill-noise-001',
+            domain='jobs',
+            record_id='noise',
+            dedupe_key='noise',
+            source_id='jobs',
+            source_type='public_jobs_board',
+            source_label='Jobs Board',
+            source_tag='',
+            source_url='https://example.com/noise',
+            published_at='2026-03-31',
+            collected_at='2026-03-31T00:00:00+00:00',
+            primary_entity='Example Co',
+            topic_tags=['backend'],
+            title='Senior Software Engineer',
+            content_text='Build a SaaS web platform, collaborate with customer support, and improve reliability, performance, and security across the product.',
+            relevance_score=0.7,
+            extra={'category': 'Software Engineering'},
+        )
+        precise_record = NormalizedRecord(
+            task_id='job-skill-noise-001',
+            domain='jobs',
+            record_id='precise',
+            dedupe_key='precise',
+            source_id='jobs',
+            source_type='public_jobs_board',
+            source_label='Jobs Board',
+            source_tag='',
+            source_url='https://example.com/precise',
+            published_at='2026-03-31',
+            collected_at='2026-03-31T00:00:00+00:00',
+            primary_entity='Example Co',
+            topic_tags=['backend'],
+            title='Senior Backend Engineer',
+            content_text='Build backend services, maintain security policies, and do performance tuning for web applications running on AWS.',
+            relevance_score=0.7,
+            extra={'category': 'Software Engineering'},
+        )
+
+        noisy_skills = {name for name, _, _ in writer._extract_job_skills(noisy_record)}
+        precise_skills = {name for name, _, _ in writer._extract_job_skills(precise_record)}
+
+        self.assertNotIn('Support', noisy_skills)
+        self.assertNotIn('Web', noisy_skills)
+        self.assertNotIn('Security', noisy_skills)
+        self.assertNotIn('Performance', noisy_skills)
+
+        self.assertIn('Backend', precise_skills)
+        self.assertIn('Web', precise_skills)
+        self.assertIn('Security', precise_skills)
+        self.assertIn('Performance', precise_skills)
+        self.assertIn('AWS', precise_skills)
+
     def test_company_intel_records_are_aggregated_into_profile_and_project_tables(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -302,6 +357,7 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertIn('SAFESKILL', project_map)
             self.assertIn('\u7f51\u795eSecSSL3600\u5b89\u5168\u63a5\u5165\u7f51\u5173\u7cfb\u7edfV5.0', project_map)
             self.assertEqual(project_map['\u7f51\u795eSecSSL3600\u5b89\u5168\u63a5\u5165\u7f51\u5173\u7cfb\u7edfV5.0'][0], 'product_update')
+            self.assertNotIn('\u7f51\u795eSecSSL3600\u5b89\u5168\u63a5\u5165\u7f51\u5173\u7cfb\u7edfV5.0\u4ea7\u54c1\u7248\u672c\u5347\u7ea7\u516c\u544a', project_map)
 
     def test_rewriting_same_sqlite_file_replaces_previous_rows(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -377,8 +433,7 @@ class SQLiteWriterTests(unittest.TestCase):
                 connection.close()
 
             self.assertEqual(row_count, 1)
-
-    def test_company_intel_project_extraction_filters_media_and_article_title_noise(self) -> None:
+    def test_company_intel_project_extraction_filters_media_article_and_announcement_noise(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
             artifacts = RunArtifacts(
@@ -429,16 +484,130 @@ class SQLiteWriterTests(unittest.TestCase):
                     relevance_score=0.8,
                     extra={},
                 ),
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-news-3',
+                    dedupe_key='qianxin_news:2026-03-12:good-3',
+                    source_id='qianxin_news',
+                    source_type='official_company_news',
+                    source_label='Qianxin News',
+                    source_tag='',
+                    source_url='https://www.qianxin.com/news/detail?news_id=3',
+                    published_at='2026-03-12',
+                    collected_at='2026-03-20T10:02:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['product_update', 'tech_blog'],
+                    title='\u5947\u5b89\u4fe1\u53d1\u5e03\u4ee3\u7801\u5b89\u5168\u667a\u80fd\u4f53\uff0c\u6253\u9020\u201c\u4e13\u5bb6\u7ea7\u5927\u8111+\u591a\u667a\u80fd\u4f53\u534f\u540c\u201d\u95ed\u73af',
+                    content_text='QcodeAgents \u4e3a\u4f01\u4e1a\u63d0\u4f9b\u5168\u573a\u666f\u667a\u80fd\u4f53\u5b89\u5168\u80fd\u529b\u3002',
+                    relevance_score=0.8,
+                    extra={},
+                ),
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-news-4',
+                    dedupe_key='qianxin_news:2026-03-13:good-4',
+                    source_id='qianxin_news',
+                    source_type='official_company_news',
+                    source_label='Qianxin News',
+                    source_tag='',
+                    source_url='https://www.qianxin.com/news/detail?news_id=4',
+                    published_at='2026-03-13',
+                    collected_at='2026-03-20T10:03:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['tech_blog'],
+                    title='OpenClaw \u5b89\u5168\u98ce\u9669\u6392\u67e5\u6307\u5357\uff1a\u5728\u6548\u7387\u4e0e\u5b89\u5168\u4e4b\u95f4\u5bfb\u627e\u5e73\u8861',
+                    content_text='GitHubAdvisoryData \u63d0\u4f9b\u4e86\u5f00\u6e90\u6f0f\u6d1e\u60c5\u62a5\uff0cOpenClaw \u63d0\u4f9b\u98ce\u9669\u6392\u67e5\u80fd\u529b\u3002',
+                    relevance_score=0.78,
+                    extra={},
+                ),
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-news-5',
+                    dedupe_key='qianxin_news:2026-03-14:noise-5',
+                    source_id='qianxin_news',
+                    source_type='official_company_news',
+                    source_label='Qianxin News',
+                    source_tag='',
+                    source_url='https://www.qianxin.com/news/detail?news_id=5',
+                    published_at='2026-03-14',
+                    collected_at='2026-03-20T10:04:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['product_update', 'tech_blog'],
+                    title='OpenClaw\u7206\u706b\uff0cAI\u667a\u80fd\u4f53\u6570\u636e\u3001\u5185\u5bb9\u3001\u6743\u9650\u4e09\u5927\u98ce\u9669\u5982\u4f55\u515c\u5e95\uff1f',
+                    content_text='OpenClaw \u8ba9\u4f01\u4e1a\u80fd\u591f\u770b\u6e05\u6570\u636e\u4e0e\u6743\u9650\u98ce\u9669\u3002',
+                    relevance_score=0.77,
+                    extra={},
+                ),
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-news-6',
+                    dedupe_key='qianxin_news:2026-03-15:noise-6',
+                    source_id='qianxin_news',
+                    source_type='official_company_news',
+                    source_label='Qianxin News',
+                    source_tag='',
+                    source_url='https://www.qianxin.com/news/detail?news_id=6',
+                    published_at='2026-03-15',
+                    collected_at='2026-03-20T10:05:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['company_profile', 'tech_blog'],
+                    title='IDC\u6700\u65b0\u62a5\u544a\uff1a\u5947\u5b89\u4fe1\u9886\u8dd1\u201cAI+\u5b89\u5168\u201d\u53cc\u8d5b\u9053\uff0c\u8986\u76d6\u9886\u57df\u518d\u521b\u65b0\u9ad8',
+                    content_text='IDCMarketGlance\uff1a\u4e2d\u56fd\u5b89\u5168\u667a\u80fd\u4f53\uff0c2026Q1\u3002',
+                    relevance_score=0.76,
+                    extra={},
+                ),
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-update-7',
+                    dedupe_key='qianxin_update:2026-03-16:update-7',
+                    source_id='qianxin_update',
+                    source_type='official_company_update',
+                    source_label='Qianxin Product Updates',
+                    source_tag='\u5347\u7ea7\u516c\u544a',
+                    source_url='https://www.qianxin.com/update/detail?update_id=7',
+                    published_at='2026-03-16',
+                    collected_at='2026-03-20T10:06:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['product_update'],
+                    title='\u5947\u5b89\u4fe1\u7f51\u795e\u7f51\u7edc\u5b89\u5168\u5ba1\u8ba1\u7cfb\u7edfV7.0\u4ea7\u54c1NSA-FB-L\u578b\u53f7\u6b63\u5f0f\u505c\u552e\u516c\u544a',
+                    content_text='\u505c\u552e\u516c\u544a',
+                    relevance_score=0.77,
+                    extra={},
+                ),
+                NormalizedRecord(
+                    task_id='company-qianxin-noise-001',
+                    domain='company_intel',
+                    record_id='company-qianxin-noise-001-update-8',
+                    dedupe_key='qianxin_update:2026-03-17:update-8',
+                    source_id='qianxin_update',
+                    source_type='official_company_update',
+                    source_label='Qianxin Product Updates',
+                    source_tag='\u5347\u7ea7\u516c\u544a',
+                    source_url='https://www.qianxin.com/update/detail?update_id=8',
+                    published_at='2026-03-17',
+                    collected_at='2026-03-20T10:07:00+00:00',
+                    primary_entity='\u5947\u5b89\u4fe1',
+                    topic_tags=['product_update'],
+                    title='\u5b89\u5168\u7f16\u6392\u81ea\u52a8\u5316\u4e0e\u54cd\u5e94\u7cfb\u7edf\uff08SOAR\uff09\u4ea7\u54c1\u6b63\u5f0f\u505c\u552e\u516c\u544a',
+                    content_text='\u505c\u552e\u516c\u544a',
+                    relevance_score=0.77,
+                    extra={},
+                ),
             ]
             run_summary = {
                 'task_id': 'company-qianxin-noise-001',
                 'domain': 'company_intel',
                 'scenario_template': 'company_due_diligence',
                 'status': 'success',
-                'raw_count': 2,
-                'normalized_count': 2,
-                'output_count': 2,
-                'quality_report': {'task_id': 'company-qianxin-noise-001', 'domain': 'company_intel', 'output_count': 2},
+                'raw_count': 8,
+                'normalized_count': 8,
+                'output_count': 8,
+                'quality_report': {'task_id': 'company-qianxin-noise-001', 'domain': 'company_intel', 'output_count': 8},
             }
 
             SQLiteWriter().write(run_summary, records, artifacts)
@@ -452,7 +621,19 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertIn('OpenClaw', project_names)
             self.assertIn('SAFESKILL', project_names)
             self.assertIn('\u9f99\u867e\u5b89\u5168\u4f34\u4fa3', project_names)
+            self.assertIn('QcodeAgents', project_names)
+            self.assertIn('\u5947\u5b89\u4fe1\u7f51\u795e\u7f51\u7edc\u5b89\u5168\u5ba1\u8ba1\u7cfb\u7edfV7.0', project_names)
+            self.assertIn('\u5b89\u5168\u7f16\u6392\u81ea\u52a8\u5316\u4e0e\u54cd\u5e94\u7cfb\u7edf\uff08SOAR\uff09', project_names)
             self.assertNotIn('\u4e2d\u56fd\u4f01\u4e1a\u5bb6', project_names)
+            self.assertNotIn('\u300a\u4e2d\u56fd\u4f01\u4e1a\u5bb6\u300b\u72ec\u5bb6\u5bf9\u8bdd\u9f50\u5411\u4e1c\uff1a\u4e0d\u60f3\u88ab\u6dd8\u6c70\uff0c\u5c31\u8981\u62e5\u62b1AI', project_names)
+            self.assertNotIn('\u591a\u667a\u80fd\u4f53\u534f\u540c', project_names)
+            self.assertNotIn('\u5168\u573a\u666f\u667a\u80fd\u4f53', project_names)
+            self.assertNotIn('GitHubAdvisoryData', project_names)
+            self.assertNotIn('IDCMarketGlance', project_names)
+            self.assertNotIn('OpenClaw\u7206\u706b\uff0cAI\u667a\u80fd\u4f53\u6570\u636e\u3001\u5185\u5bb9\u3001\u6743\u9650\u4e09\u5927\u98ce\u9669\u5982\u4f55\u515c\u5e95\uff1f', project_names)
+            self.assertNotIn('\u5947\u5b89\u4fe1\u7f51\u795e\u7f51\u7edc\u5b89\u5168\u5ba1\u8ba1\u7cfb\u7edfV7.0\u4ea7\u54c1NSA-FB-L\u578b\u53f7\u6b63\u5f0f\u505c\u552e\u516c\u544a', project_names)
+            self.assertNotIn('NSA-FB-L', project_names)
+
             self.assertNotIn('\u300a\u4e2d\u56fd\u4f01\u4e1a\u5bb6\u300b\u72ec\u5bb6\u5bf9\u8bdd\u9f50\u5411\u4e1c\uff1a\u4e0d\u60f3\u88ab\u6dd8\u6c70\uff0c\u5c31\u8981\u62e5\u62b1AI', project_names)
     def test_public_sentiment_negation_rules_flip_basic_polarity(self) -> None:
         writer = SQLiteWriter()
@@ -612,6 +793,85 @@ class SQLiteWriterTests(unittest.TestCase):
         self.assertIn('no api key needed', analysis["positive_cues"])
         self.assertIn('no extra billing', analysis["positive_cues"])
         self.assertIn('simplify', analysis["positive_cues"])
+    def test_public_sentiment_shutdown_and_abandonment_phrases_are_negative(self) -> None:
+        writer = SQLiteWriter()
+        record = NormalizedRecord(
+            task_id='public-sentiment-openai-006',
+            domain='public_sentiment',
+            record_id='shutdown',
+            dedupe_key='shutdown',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/shutdown',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='OpenAI is shutting down Sora',
+            content_text='OpenAI gave up on Sora after the launch failed.',
+            relevance_score=0.7,
+            extra={},
+        )
+
+        analysis = writer._analyze_sentiment(record)
+
+        self.assertEqual(analysis['label'], 'negative')
+        self.assertLess(analysis['score'], -0.5)
+        self.assertIn('shutting down', analysis['negative_cues'])
+        self.assertIn('gave up', analysis['negative_cues'])
+        self.assertIn('fail', analysis['negative_cues'])
+
+    def test_public_sentiment_intensifiers_and_downtoners_change_score_magnitude(self) -> None:
+        writer = SQLiteWriter()
+        strong_record = NormalizedRecord(
+            task_id='public-sentiment-openai-007',
+            domain='public_sentiment',
+            record_id='strong',
+            dedupe_key='strong',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/strong',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='The launch is very bad',
+            content_text='Users say it is extremely unstable.',
+            relevance_score=0.7,
+            extra={},
+        )
+        soft_record = NormalizedRecord(
+            task_id='public-sentiment-openai-007',
+            domain='public_sentiment',
+            record_id='soft',
+            dedupe_key='soft',
+            source_id='hn',
+            source_type='public_forum_api',
+            source_label='HN',
+            source_tag='story',
+            source_url='https://example.com/soft',
+            published_at='2026-03-24',
+            collected_at='2026-03-24T00:00:00+00:00',
+            primary_entity='OpenAI',
+            topic_tags=['tech_stack_engineering'],
+            title='The launch is somewhat bad',
+            content_text='It is a bit unstable.',
+            relevance_score=0.7,
+            extra={},
+        )
+
+        strong_analysis = writer._analyze_sentiment(strong_record)
+        soft_analysis = writer._analyze_sentiment(soft_record)
+
+        self.assertEqual(strong_analysis['label'], 'negative')
+        self.assertEqual(soft_analysis['label'], 'negative')
+        self.assertLess(strong_analysis['score'], soft_analysis['score'])
+        self.assertGreater(abs(strong_analysis['score']), abs(soft_analysis['score']))
+
     def test_public_sentiment_records_are_aggregated_into_topic_table(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             base = Path(temp_dir)
@@ -727,18 +987,22 @@ class SQLiteWriterTests(unittest.TestCase):
             self.assertEqual(topic_rows[1][3], 1)
             self.assertEqual(topic_rows[1][4], 0)
             self.assertEqual(topic_rows[1][5], 1)
-            self.assertEqual(topic_rows[1][6], 0.0)
+            self.assertAlmostEqual(topic_rows[1][6], 0.0, delta=0.02)
             self.assertEqual(topic_rows[1][7], 'neutral')
             self.assertEqual(topic_rows[1][8], 'OpenAI is under fire from critics again')
             self.assertEqual(topic_rows[1][9], 'OpenAI shipped a great API update')
             self.assertEqual(topic_rows[1][10], 'OpenAI is under fire from critics again')
-            self.assertEqual(topic_rows[1][11], 'OpenAI is under fire from critics again')
+            self.assertEqual(topic_rows[1][11], 'OpenAI shipped a great API update')
             self.assertIn('great', json.loads(topic_rows[1][12])['most_positive_cues'])
             self.assertIn('under fire', json.loads(topic_rows[1][12])['most_negative_cues'])
-            self.assertIn('under fire', json.loads(topic_rows[1][12])['most_neutral_cues'])
+            self.assertIn('great', json.loads(topic_rows[1][12])['most_neutral_cues'])
             self.assertEqual(json.loads(topic_rows[1][12])['positive_cue_counts'][0]['cue'], 'better')
             self.assertEqual(json.loads(topic_rows[1][12])['positive_cue_counts'][0]['count'], 1)
             self.assertEqual(json.loads(topic_rows[1][12])['negative_cue_counts'][0]['cue'], 'bad')
+            self.assertEqual(json.loads(topic_rows[1][12])['positive_share'], 0.5)
+            self.assertEqual(json.loads(topic_rows[1][12])['negative_share'], 0.5)
+            self.assertEqual(json.loads(topic_rows[1][12])['neutral_share'], 0.0)
+            self.assertEqual(json.loads(topic_rows[1][12])['sentiment_balance'], 0.0)
 
 
 if __name__ == '__main__':
